@@ -1,0 +1,235 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import {
+  getOrCreatePlayer,
+  getToons,
+  createOwnedToon,
+  updateProfile,
+  updateToon,
+  UserProfile,
+  OwnedToon
+} from '@/lib/firestore'
+import { TOON_TEMPLATES, xpToNextLevel, scaleStat, EVO_XP_REQUIRED } from '@/game/toons'
+
+export function usePlayerState(user: any) {
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [toons, setToons] = useState<OwnedToon[]>([])
+  const [activeToonId, setActiveToonId] = useState<string | null>(null)
+  const [dailyReward, setDailyReward] = useState<{ gems: number; coins: number; streak: number; alreadyClaimed: boolean } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const activeToon = toons.find(t => t.id === activeToonId) || toons.find(t => t.hp > 0) || toons[0]
+
+  const loadData = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+
+    const prof = await getOrCreatePlayer(user.uid, user.displayName || 'Player')
+    let owned = await getToons(user.uid)
+
+    if (owned.length === 0) {
+      const commons = TOON_TEMPLATES.filter(t => t.rarity === 'Common')
+      const starterTemplate = commons[Math.floor(Math.random() * commons.length)]
+      const starter = await createOwnedToon(user.uid, starterTemplate, true)
+      owned = [starter]
+    }
+
+    setProfile(prof)
+    setToons(owned)
+    setActiveToonId(owned[0]?.id || null)
+
+    // Daily reward logic
+    const today = new Date().toISOString().split('T')[0]
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+
+    if (prof.lastLoginDate !== today) {
+      const streak = prof.lastLoginDate === yesterday ? prof.loginStreak + 1 : 1
+      const streakIndex = Math.min(6, streak - 1)
+      const gemsReward = [2, 3, 4, 5, 7, 10, 15][streakIndex]
+      const coinsReward = [50, 75, 100, 150, 200, 300, 500][streakIndex]
+
+      setDailyReward({ gems: gemsReward, coins: coinsReward, streak, alreadyClaimed: false })
+    } else {
+      setDailyReward({ gems: 0, coins: 0, streak: prof.loginStreak, alreadyClaimed: true })
+    }
+
+    setLoading(false)
+  }, [user])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const claimDaily = async () => {
+    if (!dailyReward || dailyReward.alreadyClaimed || !profile || !user) return
+
+    const today = new Date().toISOString().split('T')[0]
+    const newProfile = {
+      ...profile,
+      gems: profile.gems + dailyReward.gems,
+      coins: profile.coins + dailyReward.coins,
+      loginStreak: dailyReward.streak,
+      lastLoginDate: today
+    }
+
+    await updateProfile(user.uid, {
+      gems: newProfile.gems,
+      coins: newProfile.coins,
+      loginStreak: newProfile.loginStreak,
+      lastLoginDate: today
+    })
+
+    setProfile(newProfile)
+    setDailyReward({ ...dailyReward, alreadyClaimed: true })
+  }
+
+  const syncAfterBattle = async (battleResult: {
+    playerHP: number,
+    xpGained: number,
+    coinsGained: number,
+    caughtToon?: any
+  }) => {
+    if (!profile || !activeToon || !user) return
+
+    let updatedToon = { ...activeToon }
+    updatedToon.hp = battleResult.playerHP <= 0 ? Math.floor(activeToon.maxHP * 0.5) : battleResult.playerHP
+    updatedToon.xp += battleResult.xpGained
+
+    while (updatedToon.xp >= updatedToon.xpToNext && updatedToon.level < 100) {
+      updatedToon.level++
+      updatedToon.xp -= updatedToon.xpToNext
+      updatedToon.xpToNext = xpToNextLevel(updatedToon.level)
+      const template = TOON_TEMPLATES.find(t => t.id === updatedToon.templateId)!
+      updatedToon.maxHP = scaleStat(template.baseHP, updatedToon.evoTier, updatedToon.level)
+      updatedToon.atk = scaleStat(template.baseAtk, updatedToon.evoTier, updatedToon.level)
+      updatedToon.def = scaleStat(template.baseDef, updatedToon.evoTier, updatedToon.level)
+      updatedToon.spd = scaleStat(template.baseSpd, updatedToon.evoTier, updatedToon.level)
+    }
+
+    const updatedProfile = {
+      ...profile,
+      xp: profile.xp + battleResult.xpGained,
+      coins: profile.coins + battleResult.coinsGained,
+      totalCaught: profile.totalCaught + (battleResult.caughtToon ? 1 : 0)
+    }
+
+    if (updatedProfile.xp >= updatedProfile.xpToNext) {
+      updatedProfile.level++
+      updatedProfile.xp -= updatedProfile.xpToNext
+      updatedProfile.xpToNext = updatedProfile.level * 200
+    }
+
+    // Batch writes
+    const { db } = await import('@/lib/firebase')
+    const { doc, writeBatch, collection } = await import('firebase/firestore')
+    const batch = writeBatch(db)
+
+    const toonRef = doc(db, 'users', user.uid, 'toons', activeToon.id!)
+    batch.update(toonRef, updatedToon)
+
+    const userRef = doc(db, 'users', user.uid)
+    batch.update(userRef, {
+      xp: updatedProfile.xp,
+      level: updatedProfile.level,
+      xpToNext: updatedProfile.xpToNext,
+      coins: updatedProfile.coins,
+      totalCaught: updatedProfile.totalCaught
+    })
+
+    if (battleResult.caughtToon) {
+      const newToonRef = doc(collection(db, 'users', user.uid, 'toons'))
+      const template = battleResult.caughtToon
+      const newToon = {
+        templateId: template.id,
+        name: template.name,
+        emoji: template.emoji,
+        type: template.type,
+        rarity: template.rarity,
+        zone: template.zone,
+        specialMove: template.specialMove,
+        specialDesc: template.specialDesc,
+        evoTier: 1,
+        level: 1,
+        xp: 0,
+        xpToNext: 100,
+        hp: template.baseHP,
+        maxHP: template.baseHP,
+        atk: template.baseAtk,
+        def: template.baseDef,
+        spd: template.baseSpd,
+        catchDate: new Date().toISOString(),
+        isStarter: false
+      }
+      batch.set(newToonRef, newToon)
+    }
+
+    await batch.commit()
+
+    setProfile(updatedProfile)
+    const newToons = await getToons(user.uid)
+    setToons(newToons)
+  }
+
+  const evolveToon = async (toonId: string) => {
+    const toon = toons.find(t => t.id === toonId)
+    if (!toon || !user) return
+    if (toon.evoTier >= 5 || toon.xp < EVO_XP_REQUIRED[toon.evoTier]) return
+
+    const newEvoTier = toon.evoTier + 1
+    const template = TOON_TEMPLATES.find(t => t.id === toon.templateId)!
+
+    const updates = {
+      evoTier: newEvoTier,
+      maxHP: scaleStat(template.baseHP, newEvoTier, toon.level),
+      atk: scaleStat(template.baseAtk, newEvoTier, toon.level),
+      def: scaleStat(template.baseDef, newEvoTier, toon.level),
+      spd: scaleStat(template.baseSpd, newEvoTier, toon.level),
+    }
+
+    await updateToon(user.uid, toonId, updates)
+    const newToons = await getToons(user.uid)
+    setToons(newToons)
+  }
+
+  const pullGacha = async (count: number) => {
+    if (!profile || !user) return
+    const cost = count === 10 ? 45 : 5 * count
+    if (profile.gems < cost) return
+
+    const newToons = []
+    for (let i = 0; i < count; i++) {
+      const r = Math.random() * 100
+      let rarity: any = 'Common'
+      if (r < 3) rarity = 'Legendary'
+      else if (r < 15) rarity = 'Epic'
+      else if (r < 40) rarity = 'Rare'
+
+      const pool = TOON_TEMPLATES.filter(t => t.rarity === rarity)
+      const template = pool[Math.floor(Math.random() * pool.length)]
+      newToons.push(template)
+    }
+
+    await updateProfile(user.uid, { gems: profile.gems - cost })
+    const created = await Promise.all(newToons.map(t => createOwnedToon(user.uid, t)))
+
+    setProfile({ ...profile, gems: profile.gems - cost })
+    const refreshed = await getToons(user.uid)
+    setToons(refreshed)
+    return created
+  }
+
+  return {
+    profile,
+    toons,
+    activeToon,
+    activeToonId,
+    setActiveToonId,
+    dailyReward,
+    claimDaily,
+    syncAfterBattle,
+    evolveToon,
+    pullGacha,
+    loading
+  }
+}
