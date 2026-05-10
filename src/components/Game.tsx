@@ -11,11 +11,11 @@ import { TOON_TEMPLATES } from '@/game/toons'
 
 export default function Game() {
   const { user, signOut } = useAuth()
-  const { 
-    profile, toons, activeToon, activeToonId, setActiveToonId, 
-    dailyReward, claimDaily, syncAfterBattle, evolveToon, pullGacha, loading 
+  const {
+    profile, toons, activeToon, activeToonId, setActiveToonId,
+    dailyReward, claimDaily, syncAfterBattle, evolveToon, pullGacha, loading
   } = usePlayerState(user)
-  
+
   const [battle, setBattle] = useState<any>(null)
   const [showCollection, setShowCollection] = useState(false)
   const [showGacha, setShowGacha] = useState(false)
@@ -28,9 +28,9 @@ export default function Game() {
       if (!containerRef.current) return
       const Phaser = (await import('phaser')).default
       const { GameScene } = await import('@/game/GameScene')
-      
+
       const sceneInstance = new GameScene()
-      
+
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
         width: window.innerWidth,
@@ -51,15 +51,15 @@ export default function Game() {
       game = new Phaser.Game(config)
       ;(window as any).Phaser = Phaser
       gameRef.current = game
-      
+
       game.events.on('encounter', (zone: string) => {
         // Pick random toon from zone
         const zoneToons = TOON_TEMPLATES.filter(t => t.zone === zone || t.zone === 'Shadow')
         const enemyTemplate = zoneToons[Math.floor(Math.random() * zoneToons.length)]
-        
+
         // Scale enemy to player level approx
         const level = Math.max(1, (profile?.level || 1) + Math.floor(Math.random() * 3) - 1)
-        
+
         setBattle({
           enemy: {
             ...enemyTemplate,
@@ -76,7 +76,7 @@ export default function Game() {
     }
 
     initPhaser()
-    
+
     return () => {
       if (game) game.destroy(true)
     }
@@ -109,7 +109,7 @@ export default function Game() {
             <span>💎 {profile.gems}</span>
           </div>
         </div>
-        
+
         {activeToon && (
           <div style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: '8px', borderRadius: '8px', color: 'white', display: 'flex', alignItems: 'center', gap: '10px', pointerEvents: 'auto' }}>
             <div style={{ fontSize: '24px' }}>{activeToon.emoji}</div>
@@ -129,7 +129,7 @@ export default function Game() {
         <button onClick={() => setShowCollection(true)} style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid #3b82f6', color: 'white', fontSize: '20px', cursor: 'pointer' }}>📦</button>
       </div>
 
-      <button 
+      <button
         onClick={signOut}
         style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: '#9ca3af', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
       >
@@ -138,7 +138,7 @@ export default function Game() {
 
       {/* Joystick */}
       {isTouch && (
-        <div 
+        <div
           style={{ position: 'absolute', bottom: 40, left: 40, width: '110px', height: '110px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.3)', touchAction: 'none' }}
           onTouchMove={(e) => {
             const touch = e.touches[0]
@@ -157,35 +157,35 @@ export default function Game() {
       )}
 
       {battle && (
-        <BattleUI 
-          playerToon={activeToon} 
-          enemyTemplate={battle.enemy} 
-          onEnd={handleBattleEnd} 
+        <BattleUI
+          playerToon={activeToon}
+          enemyTemplate={battle.enemy}
+          onEnd={handleBattleEnd}
         />
       )}
 
       {showCollection && (
-        <CollectionScreen 
-          toons={toons} 
+        <CollectionScreen
+          toons={toons}
           activeToonId={activeToonId}
-          onClose={() => setShowCollection(false)} 
+          onClose={() => setShowCollection(false)}
           onSetActive={setActiveToonId}
           onEvolve={evolveToon}
         />
       )}
 
       {showGacha && (
-        <GachaScreen 
+        <GachaScreen
           gems={profile.gems}
           onPull={pullGacha}
-          onClose={() => setShowGacha(false)} 
+          onClose={() => setShowGacha(false)}
         />
       )}
 
       {dailyReward && !dailyReward.alreadyClaimed && (
-        <DailyRewardPopup 
-          reward={dailyReward} 
-          onClaim={claimDaily} 
+        <DailyRewardPopup
+          reward={dailyReward}
+          onClaim={claimDaily}
         />
       )}
     </div>

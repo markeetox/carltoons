@@ -1,4 +1,0 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; } 
-html, body { width: 100%; height: 100%; overflow: hidden; background: #080810; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; touch-action: none; } 
-canvas { touch-action: none; }
-button { font-family: inherit; } 

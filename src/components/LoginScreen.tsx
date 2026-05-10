@@ -46,7 +46,7 @@ export default function LoginScreen() {
         ))}
       </div>
 
-      <button 
+      <button
         onClick={signIn}
         style={{
           backgroundColor: 'white',

@@ -32,8 +32,8 @@ export default function CollectionScreen({ toons, activeToonId, onClose, onSetAc
 
       <div style={{ display: 'flex', gap: '10px', padding: '15px', overflowX: 'auto' }}>
         {rarities.map(r => (
-          <button 
-            key={r} 
+          <button
+            key={r}
             onClick={() => setFilter(r)}
             style={{
               padding: '6px 16px',
@@ -54,8 +54,8 @@ export default function CollectionScreen({ toons, activeToonId, onClose, onSetAc
         {filtered.map(toon => {
           const isEvolvable = toon.evoTier < 5 && toon.xp >= EVO_XP_REQUIRED[toon.evoTier]
           return (
-            <div 
-              key={toon.id} 
+            <div
+              key={toon.id}
               onClick={() => setSelectedToon(toon)}
               style={{
                 backgroundColor: '#111827',
@@ -81,7 +81,7 @@ export default function CollectionScreen({ toons, activeToonId, onClose, onSetAc
       {selectedToon && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 400, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
           <button onClick={() => setSelectedToon(null)} style={{ alignSelf: 'flex-end', fontSize: '24px', background: 'none', border: 'none', color: 'white' }}>✕</button>
-          
+
           <div style={{ width: '120px', height: '120px', backgroundColor: (RARITY_BG as any)[selectedToon.rarity], borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '80px', border: `4px solid ${(RARITY_COLOR as any)[selectedToon.rarity]}`, margin: '20px 0' }}>
             {selectedToon.emoji}
           </div>
@@ -116,16 +116,16 @@ export default function CollectionScreen({ toons, activeToonId, onClose, onSetAc
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '300px' }}>
             {selectedToon.id !== activeToonId && (
-              <button 
+              <button
                 onClick={() => { onSetActive(selectedToon.id!); setSelectedToon(null) }}
                 style={{ padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
               >
                 Set Active
               </button>
             )}
-            
+
             {selectedToon.evoTier < 5 && (
-              <button 
+              <button
                 onClick={() => { onEvolve(selectedToon.id!); setSelectedToon(null) }}
                 disabled={selectedToon.xp < EVO_XP_REQUIRED[selectedToon.evoTier]}
                 style={{ padding: '12px', backgroundColor: '#a855f7', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', opacity: selectedToon.xp < EVO_XP_REQUIRED[selectedToon.evoTier] ? 0.5 : 1 }}
