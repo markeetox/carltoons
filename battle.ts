@@ -42,14 +42,14 @@ export default function GachaScreen({ gems, onPull, onClose }: GachaProps) {
           <div style={{ fontSize: '120px', marginBottom: '50px', filter: pulling ? 'hue-rotate(90deg)' : 'none', transition: 'filter 1s' }}>🔮</div>
 
           <div style={{ display: 'flex', gap: '20px', width: '100%', maxWidth: '400px' }}>
-            <button
+            <button 
               onClick={() => handlePull(1)}
               disabled={gems < 5 || pulling}
               style={{ flex: 1, padding: '15px', backgroundColor: '#3b82f6', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', opacity: gems < 5 ? 0.5 : 1 }}
             >
               Pull 1<br/><span style={{ fontSize: '12px', opacity: 0.8 }}>💎 5</span>
             </button>
-            <button
+            <button 
               onClick={() => handlePull(10)}
               disabled={gems < 45 || pulling}
               style={{ flex: 1, padding: '15px', backgroundColor: '#a855f7', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', opacity: gems < 45 ? 0.5 : 1 }}
@@ -63,7 +63,7 @@ export default function GachaScreen({ gems, onPull, onClose }: GachaProps) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '15px' }}>
             {results.map((toon, i) => (
-              <div
+              <div 
                 key={i}
                 style={{
                   backgroundColor: '#111827',
@@ -84,7 +84,7 @@ export default function GachaScreen({ gems, onPull, onClose }: GachaProps) {
               </div>
             ))}
           </div>
-          <button
+          <button 
             onClick={() => setResults(null)}
             style={{ display: 'block', width: '200px', margin: '40px auto', padding: '12px', backgroundColor: 'white', color: 'black', border: 'none', borderRadius: '99px', fontWeight: 'bold', cursor: 'pointer' }}
           >

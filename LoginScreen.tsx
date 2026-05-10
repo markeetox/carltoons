@@ -28,7 +28,7 @@ export default function DailyRewardPopup({ reward, onClaim }: DailyRewardProps) 
           </div>
         </div>
 
-        <button
+        <button 
           onClick={onClaim}
           style={{ width: '100%', padding: '14px', backgroundColor: '#f59e0b', color: 'black', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '18px', cursor: 'pointer' }}
         >

@@ -1,14 +1,14 @@
-export type ToonType   = 'Rock' | 'Paper' | 'Scissors'
-export type ToonRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
-export type BiomeZone  = 'Forest' | 'City' | 'Desert' | 'Ocean' | 'Shadow'
+export type ToonType   = 'Rock' | 'Paper' | 'Scissors' 
+export type ToonRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' 
+export type BiomeZone  = 'Forest' | 'City' | 'Desert' | 'Ocean' | 'Shadow' 
 
-export interface ToonTemplate {
-  id: string; name: string; emoji: string
-  type: ToonType; rarity: ToonRarity; zone: BiomeZone
-  specialMove: string; specialDesc: string
-  baseHP: number; baseAtk: number; baseDef: number; baseSpd: number
-  catchRate: number   // 0.0–1.0, higher = easier
-  gachaWeight: number // higher = more common in pulls
+export interface ToonTemplate { 
+  id: string; name: string; emoji: string 
+  type: ToonType; rarity: ToonRarity; zone: BiomeZone 
+  specialMove: string; specialDesc: string 
+  baseHP: number; baseAtk: number; baseDef: number; baseSpd: number 
+  catchRate: number   // 0.0–1.0, higher = easier 
+  gachaWeight: number // higher = more common in pulls 
 }
 
 export const TOON_TEMPLATES: ToonTemplate[] = [
@@ -46,24 +46,24 @@ export const TOON_TEMPLATES: ToonTemplate[] = [
   { id: 'angel', name: 'Angel', emoji: '👼', type: 'Paper', rarity: 'Legendary', zone: 'Shadow', specialMove: 'Divine Wrath', specialDesc: 'Celestial energy into unstoppable strike', baseHP: 52, baseAtk: 21, baseDef: 16, baseSpd: 17, catchRate: 0.05, gachaWeight: 1 },
 ]
 
-export const TYPE_BEATS: Record<ToonType, ToonType> = {
-  Rock: 'Scissors', Scissors: 'Paper', Paper: 'Rock'
+export const TYPE_BEATS: Record<ToonType, ToonType> = { 
+  Rock: 'Scissors', Scissors: 'Paper', Paper: 'Rock' 
 }
 
-export const EVO_MULTIPLIER = [1.0, 1.35, 1.75, 2.2, 2.8]  // index = evoTier - 1
+export const EVO_MULTIPLIER = [1.0, 1.35, 1.75, 2.2, 2.8]  // index = evoTier - 1 
+ 
+export function scaleStat(base: number, evoTier: number, level: number): number { 
+  return Math.floor(base * EVO_MULTIPLIER[evoTier - 1] * (1 + (level - 1) * 0.08)) 
+} 
+ 
+export function xpToNextLevel(level: number): number { 
+  return Math.floor(80 * Math.pow(level, 1.4)) 
+} 
+ 
+// Evolution XP thresholds (cumulative toon XP required) 
+export const EVO_XP_REQUIRED = [0, 500, 1200, 2500, 5000]  // index = evoTier 
 
-export function scaleStat(base: number, evoTier: number, level: number): number {
-  return Math.floor(base * EVO_MULTIPLIER[evoTier - 1] * (1 + (level - 1) * 0.08))
-}
-
-export function xpToNextLevel(level: number): number {
-  return Math.floor(80 * Math.pow(level, 1.4))
-}
-
-// Evolution XP thresholds (cumulative toon XP required)
-export const EVO_XP_REQUIRED = [0, 500, 1200, 2500, 5000]  // index = evoTier
-
-export const RARITY_COLOR = { Common: '#6b7280', Rare: '#3b82f6', Epic: '#a855f7', Legendary: '#f59e0b' }
-export const RARITY_BG    = { Common: '#1f2937', Rare: '#1e3a5f', Epic: '#2e1a47', Legendary: '#422006' }
-export const TYPE_COLOR   = { Rock: '#78716c',   Paper: '#a8a29e', Scissors: '#dc2626' }
+export const RARITY_COLOR = { Common: '#6b7280', Rare: '#3b82f6', Epic: '#a855f7', Legendary: '#f59e0b' } 
+export const RARITY_BG    = { Common: '#1f2937', Rare: '#1e3a5f', Epic: '#2e1a47', Legendary: '#422006' } 
+export const TYPE_COLOR   = { Rock: '#78716c',   Paper: '#a8a29e', Scissors: '#dc2626' } 
 export const ZONE_COLOR   = { Forest: '#166534', City: '#1e3a5f', Desert: '#92400e', Ocean: '#164e63', Shadow: '#1a0a2e' }

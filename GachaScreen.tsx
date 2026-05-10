@@ -59,7 +59,7 @@ export default function BattleUI({ playerToon, enemyTemplate, onEnd }: BattleUIP
     // Rough animation timing
     if (action === 'attack' || action === 'special') setEnemyShake(true)
     setTimeout(() => setEnemyShake(false), 500)
-
+    
     setTimeout(() => {
       setPlayerFlash(true)
       setBattleState(result.state)
@@ -150,8 +150,8 @@ export default function BattleUI({ playerToon, enemyTemplate, onEnd }: BattleUIP
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
           <div style={{ fontSize: '64px' }}>{battleState.winner === 'player' ? '🏆' : '💀'}</div>
           <h2 style={{ fontSize: '32px', margin: '20px 0' }}>{battleState.winner === 'player' ? (battleState.caught ? 'Caught!' : 'Victory!') : 'Defeated!'}</h2>
-
-          <button
+          
+          <button 
             onClick={() => onEnd({
               playerHP: battleState.player.hp,
               xpGained: battleState.winner === 'player' ? 50 : 10,

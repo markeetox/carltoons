@@ -39,14 +39,14 @@ export class GameScene {
   create() {
     const { scene } = this;
     const Phaser = (window as any).Phaser || (this.scene.game as any).constructor.Phaser || (window as any).Phaser;
-
+    
     // Generate procedural textures
     this.createTextures();
 
     // Create Map
     const tileSize = 32;
     const worldSize = 50; // tiles
-
+    
     // Fill with borders/walls
     for (let y = 0; y < worldSize; y++) {
       this.map[y] = [];
@@ -72,7 +72,7 @@ export class GameScene {
             }
           }
         }
-
+        
         const texture = this.getTextureForType(type);
         const tile = scene.add.image(x * tileSize, y * tileSize, texture).setOrigin(0);
         if (type === 'wall') {
@@ -178,7 +178,7 @@ export class GameScene {
 
     const tx = Math.floor(this.player.x / 32);
     const ty = Math.floor(this.player.y / 32);
-
+    
     // Check if on grass
     let onGrass = false;
     let zone = '';
@@ -234,7 +234,7 @@ export class GameScene {
     const g = this.minimapGraphics;
     const mmScale = 2.2;
     const colors: any = { Forest: 0x2d6a2d, City: 0x374151, Desert: 0xc4973a, Ocean: 0x1e6fa0, Shadow: 0x2d0a4e };
-
+    
     g.clear();
     g.fillStyle(0x111111, 0.8);
     g.fillRect(0, 0, 50 * mmScale, 50 * mmScale);
@@ -244,7 +244,7 @@ export class GameScene {
       g.fillStyle(colors[zone]);
       g.fillRect(x1 * mmScale, y1 * mmScale, (x2 - x1 + 1) * mmScale, (y2 - y1 + 1) * mmScale);
     }
-
+    
     // Draw paths
     g.fillStyle(0x4a4a4a);
     g.fillRect(24 * mmScale, 0, 2 * mmScale, 50 * mmScale);
