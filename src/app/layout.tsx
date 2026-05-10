@@ -1,3 +1,4 @@
+import React from 'react'
 import type { Metadata, Viewport } from 'next'
 import { AuthProvider } from '@/hooks/useAuth'
 import './globals.css'

@@ -126,7 +126,9 @@ export function usePlayerState(user: any) {
     const batch = writeBatch(db)
 
     const toonRef = doc(db, 'users', user.uid, 'toons', activeToon.id!)
-    batch.update(toonRef, updatedToon)
+    const toonData = { ...updatedToon }
+    delete (toonData as any).id
+    batch.update(toonRef, toonData)
 
     const userRef = doc(db, 'users', user.uid)
     batch.update(userRef, {
