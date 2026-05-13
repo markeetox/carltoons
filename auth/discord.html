@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logging in… — Tooniseum</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --clr-bg: #0d0d0d; --clr-gold: #e8a020; --clr-text: #f0ead6; --clr-dim: #8a8070; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--clr-bg); color: var(--clr-text);
+      font-family: 'Nunito', sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100vh; gap: 20px;
+      text-align: center; padding: 24px;
+    }
+    .logo { font-family: 'Luckiest Guy', cursive; font-size: 42px; color: var(--clr-gold); }
+    .msg  { font-size: 15px; color: var(--clr-dim); max-width: 280px; line-height: 1.6; }
+    .spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid #2a2a2a; border-top-color: var(--clr-gold);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg { color: #e05c5c; font-size: 14px; display: none; }
+  </style>
+
+  <!-- Firebase — same SDKs as index.html -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="/js/config.js"></script>
+</head>
+<body>
+  <div class="logo">🐦 Tooniseum</div>
+  <div class="spinner" id="spinner"></div>
+  <p class="msg" id="msg">Verifying your Discord role…</p>
+  <p class="error-msg" id="err"></p>
+
+  <script>
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code   = params.get("code");
+      const errParam = params.get("error");
+
+      if (errParam || !code) {
+        showError("Discord login was cancelled or failed. Redirecting…");
+        setTimeout(() => window.location.href = "/", 2500);
+        return;
+      }
+
+      try {
+        // Exchange code for Firebase custom token via Vercel edge function
+        const res = await fetch(`${API_BASE}/discord-token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code,
+            redirectUri: DISCORD_CONFIG.redirectUri,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error ?? "Token exchange failed");
+
+        if (!data.hasRole) {
+          showError("You need the Captain or Pirate role to play. Join the Discord and get your role first!");
+          setTimeout(() => window.location.href = "/", 4000);
+          return;
+        }
+
+        document.getElementById("msg").textContent = "Welcome aboard, signing you in…";
+
+        await firebase.auth().signInWithCustomToken(data.customToken);
+
+        // Signed in — go to game
+        window.location.href = "/";
+
+      } catch (err) {
+        console.error("[discord-callback]", err);
+        showError("Something went wrong during login. Redirecting…");
+        setTimeout(() => window.location.href = "/", 3000);
+      }
+    })();
+
+    function showError(msg) {
+      document.getElementById("spinner").style.display = "none";
+      document.getElementById("msg").style.display = "none";
+      const el = document.getElementById("err");
+      el.textContent = msg;
+      el.style.display = "block";
+    }
+  </script>
+</body>
+</html>
