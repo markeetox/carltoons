@@ -1,12 +1,9 @@
 /* ════════════════════════════════════════════════════════════
    sw.js  —  Service Worker (PWA)
-   Caches shell assets so the app loads offline.
-   Pigeon PNGs are cached on first load and served from cache.
    ════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = "tooniseum-v1";
+const CACHE_NAME = "pigeons-v1";
 
-// Shell assets — always cached
 const SHELL = [
   "/",
   "/index.html",
@@ -38,9 +35,14 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // Network-first for API calls (Firebase, Discord edge functions)
-  if (url.pathname.startsWith("/api/") || url.hostname.includes("firebase")) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  // Skip non-GET and browser-extension requests
+  if (e.request.method !== "GET" || !url.protocol.startsWith("http")) return;
+
+  // Network-first for API and Firebase calls
+  if (url.pathname.startsWith("/api/") || url.hostname.includes("firebase") || url.hostname.includes("googleapis")) {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(e.request))
+    );
     return;
   }
 
@@ -50,6 +52,7 @@ self.addEventListener("fetch", (e) => {
       caches.match(e.request).then((cached) => {
         if (cached) return cached;
         return fetch(e.request).then((res) => {
+          // Clone BEFORE consuming — fixes "body already used" error
           const clone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
           return res;
@@ -63,7 +66,9 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const fetched = fetch(e.request).then((res) => {
-        caches.open(CACHE_NAME).then((c) => c.put(e.request, res.clone()));
+        // Clone BEFORE consuming
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
         return res;
       });
       return cached || fetched;

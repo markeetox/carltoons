@@ -612,7 +612,7 @@ const App = (() => {
     return streak;
   }
 
-  return { boot, saveNewPigeon, recordBattleResult, handleDiscordCallback };
+  return { boot, saveNewPigeon, recordBattleResult };
 })();
 
 /* ── Start the app ── */
