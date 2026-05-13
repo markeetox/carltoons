@@ -152,6 +152,15 @@ const App = (() => {
     document.querySelector(".auth-form").addEventListener("keydown", (e) => {
       if (e.key === "Enter") btnSubmit.click();
     });
+
+    // Detect Brave browser and show shields warning
+    const isBrave = navigator.brave && typeof navigator.brave.isBrave === "function";
+    if (isBrave) {
+      navigator.brave.isBrave().then((brave) => {
+        const el = document.getElementById("brave-note");
+        if (brave && el) el.style.display = "flex";
+      });
+    }
   }
 
   function _authErrorMsg(code) {
@@ -163,6 +172,7 @@ const App = (() => {
       "auth/weak-password":        "Password is too weak.",
       "auth/too-many-requests":    "Too many attempts — try again later.",
       "auth/invalid-credential":   "Wrong email or password.",
+      "auth/network-request-failed": "Network blocked — if using Brave, disable Shields for this site.",
     };
     return map[code] ?? "Something went wrong. Try again.";
   }
@@ -246,14 +256,12 @@ const App = (() => {
   ────────────────────────────────────────────────────────────── */
   function _routeAfterLoad() {
     if (!_userData.hasPigeon) {
-      // New player: show egg screen
-      _renderEggScreen();
       showScreen("egg");
+      _renderEggScreen();
     } else if (_pigeon) {
-      // Has pigeon: go home
+      showScreen("home");
       _renderHomeScreen();
       _renderProfileScreen();
-      showScreen("home");
     }
   }
 
@@ -289,22 +297,26 @@ const App = (() => {
       };
     }
 
-    document.getElementById("egg-days-label").textContent =
+    const daysLabel = document.getElementById("egg-days-label");
+    if (daysLabel) daysLabel.textContent =
       daysLeft <= 0 ? "Ready to hatch! 🎉" : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} until hatch`;
 
     // Streak
     const streak = _calcStreak(_userData.loginDates ?? []);
-    document.getElementById("streak-count").textContent = streak;
+    const streakEl = document.getElementById("streak-count");
+    if (streakEl) streakEl.textContent = streak;
 
     // Used today
     const grid    = document.getElementById("action-grid");
     const usedMsg = document.getElementById("daily-used-msg");
-    if (usedToday) {
-      grid.style.display = "none";
-      usedMsg.style.display = "flex";
-    } else {
-      grid.style.display = "grid";
-      usedMsg.style.display = "none";
+    if (grid && usedMsg) {
+      if (usedToday) {
+        grid.style.display = "none";
+        usedMsg.style.display = "flex";
+      } else {
+        grid.style.display = "grid";
+        usedMsg.style.display = "none";
+      }
     }
 
     renderIncubationLog("incubation-log", actionLog);
@@ -415,10 +427,12 @@ const App = (() => {
     const stats  = _pigeon.stats;
     const today  = todayStr();
 
-    document.getElementById("home-pigeon-name").textContent = _pigeon.name ?? "Pigeon";
+    const nameEl = document.getElementById("home-pigeon-name");
+    if (nameEl) nameEl.textContent = _pigeon.name ?? "Pigeon";
 
     const streak = _calcStreak(_userData.loginDates ?? []);
-    document.getElementById("home-streak").textContent = streak;
+    const streakEl = document.getElementById("home-streak");
+    if (streakEl) streakEl.textContent = streak;
 
     buildPigeonRig(document.getElementById("home-rig"), traits, { idle: true });
     updateBondUI(_pigeon.bond ?? 50);
@@ -485,45 +499,54 @@ const App = (() => {
      PROFILE SCREEN
   ────────────────────────────────────────────────────────────── */
   function _renderProfileScreen() {
-    if (!_pigeon) return;
+    if (!_pigeon || !_userData) return;
 
-    buildPigeonRig(document.getElementById("profile-rig"), _pigeon.traits, { idle: true });
-    document.getElementById("profile-name").textContent = _pigeon.name ?? "—";
-    document.getElementById("profile-sub").textContent =
-      `Level ${_pigeon.level ?? 1} · ${(_userData.battleLog ?? []).length} battles`;
+    const rigEl = document.getElementById("profile-rig");
+    if (rigEl) buildPigeonRig(rigEl, _pigeon.traits, { idle: true });
+
+    const nameEl = document.getElementById("profile-name");
+    if (nameEl) nameEl.textContent = _pigeon.name ?? "—";
+
+    const subEl = document.getElementById("profile-sub");
+    if (subEl) subEl.textContent = `Level ${_pigeon.level ?? 1} · ${(_userData.battleLog ?? []).length} battles`;
 
     renderFullStatCard("profile-stat-card", _pigeon.stats);
 
     // Battle log
     const logEl = document.getElementById("battle-log");
-    const battles = _userData.battleLog ?? [];
-    if (battles.length === 0) {
-      logEl.innerHTML = `<p class="empty-state"><i class="fa-solid fa-skull"></i> No battles yet</p>`;
-    } else {
-      logEl.innerHTML = battles.slice(-10).reverse().map((b) => `
-        <div class="battle-entry">
-          <span class="battle-result ${b.won ? "win" : "loss"}">${b.won ? "WIN" : "LOSS"}</span>
-          <span>vs ${b.opponent}</span>
-          <span style="margin-left:auto;font-size:11px">${b.date ?? ""}</span>
-        </div>
-      `).join("");
+    if (logEl) {
+      const battles = _userData.battleLog ?? [];
+      if (battles.length === 0) {
+        logEl.innerHTML = `<p class="empty-state"><i class="fa-solid fa-skull"></i> No battles yet</p>`;
+      } else {
+        logEl.innerHTML = battles.slice(-10).reverse().map((b) => `
+          <div class="battle-entry">
+            <span class="battle-result ${b.won ? "win" : "loss"}">${b.won ? "WIN" : "LOSS"}</span>
+            <span>vs ${b.opponent}</span>
+            <span style="margin-left:auto;font-size:11px">${b.date ?? ""}</span>
+          </div>
+        `).join("");
+      }
     }
 
     // Streak dots (last 7 days)
     const dotsEl = document.getElementById("streak-dots");
-    const loginDates = _userData.loginDates ?? [];
-    dotsEl.innerHTML = "";
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dStr = d.toISOString().slice(0, 10);
-      const dot = document.createElement("div");
-      dot.className = `streak-dot ${loginDates.includes(dStr) ? "active" : ""}`;
-      dot.textContent = loginDates.includes(dStr) ? "✓" : "·";
-      dotsEl.appendChild(dot);
+    if (dotsEl) {
+      const loginDates = _userData.loginDates ?? [];
+      dotsEl.innerHTML = "";
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().slice(0, 10);
+        const dot = document.createElement("div");
+        dot.className = `streak-dot ${loginDates.includes(dStr) ? "active" : ""}`;
+        dot.textContent = loginDates.includes(dStr) ? "✓" : "·";
+        dotsEl.appendChild(dot);
+      }
     }
 
-    document.getElementById("total-logins").textContent = _userData.totalLogins ?? 0;
+    const loginsEl = document.getElementById("total-logins");
+    if (loginsEl) loginsEl.textContent = _userData.totalLogins ?? 0;
   }
 
   /* ──────────────────────────────────────────────────────────
@@ -568,7 +591,7 @@ const App = (() => {
     _userData.battleLog = newLog;
     _userData.elo       = newElo;
 
-    document.getElementById("player-elo").textContent = newElo;
+    const eloEl = document.getElementById("player-elo"); if (eloEl) eloEl.textContent = newElo;
     _renderProfileScreen();
   }
 

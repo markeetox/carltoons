@@ -77,9 +77,11 @@ input { font-family: var(--font-body); }
   opacity: 0; pointer-events: none;
   transition: opacity .25s ease;
   -webkit-overflow-scrolling: touch;
+  z-index: 1;        /* inactive screens sit below */
 }
 .screen.active {
   opacity: 1; pointer-events: all;
+  z-index: 10;       /* active screen always on top */
 }
 .screen-cinematic {
   padding-bottom: 0;   /* no nav on hatch sequence */
@@ -855,3 +857,12 @@ input { font-family: var(--font-body); }
 
 /* Remove old X button style — replaced by btn-primary */
 .btn-x { display: none; }
+
+/* ── Brave shields warning ── */
+.brave-note {
+  font-size: 12px; color: var(--clr-red);
+  display: flex; align-items: center; gap: 6px;
+  background: #e05c5c18; border: 1px solid #e05c5c40;
+  border-radius: var(--r-md); padding: 8px 14px;
+  max-width: 320px; text-align: left; line-height: 1.5;
+}
