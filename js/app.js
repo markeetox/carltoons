@@ -63,8 +63,8 @@ const App = (() => {
     });
 
 
-    // X (Twitter) login button
-    document.getElementById("btn-x-login").addEventListener("click", _xLogin);
+    // Auth form — tab switching + submit
+    _initAuthForm();
 
     // Logout
     document.getElementById("btn-logout").addEventListener("click", async () => {
@@ -73,6 +73,93 @@ const App = (() => {
     });
   }
 
+
+  /* ──────────────────────────────────────────────────────────
+     EMAIL / PASSWORD AUTH FORM
+  ────────────────────────────────────────────────────────────── */
+  function _initAuthForm() {
+    let isRegister = false;
+
+    const tabLogin    = document.getElementById("tab-login");
+    const tabRegister = document.getElementById("tab-register");
+    const form        = document.querySelector(".auth-form");
+    const btnSubmit   = document.getElementById("btn-auth-submit");
+    const btnLabel    = document.getElementById("btn-auth-label");
+    const errEl       = document.getElementById("auth-error");
+
+    // Tab switching
+    tabLogin.addEventListener("click", () => {
+      isRegister = false;
+      tabLogin.classList.add("active");
+      tabRegister.classList.remove("active");
+      form.classList.remove("register-mode");
+      btnLabel.textContent = "Login";
+      errEl.textContent = "";
+    });
+
+    tabRegister.addEventListener("click", () => {
+      isRegister = true;
+      tabRegister.classList.add("active");
+      tabLogin.classList.remove("active");
+      form.classList.add("register-mode");
+      btnLabel.textContent = "Create Account";
+      errEl.textContent = "";
+    });
+
+    // Submit
+    btnSubmit.addEventListener("click", async () => {
+      const username = document.getElementById("auth-username").value.trim();
+      const email    = document.getElementById("auth-email").value.trim();
+      const password = document.getElementById("auth-password").value;
+      errEl.textContent = "";
+
+      if (!email || !password) {
+        errEl.textContent = "Email and password are required."; return;
+      }
+      if (isRegister && !username) {
+        errEl.textContent = "Pick a username."; return;
+      }
+      if (password.length < 6) {
+        errEl.textContent = "Password must be at least 6 characters."; return;
+      }
+
+      btnSubmit.disabled = true;
+      btnLabel.textContent = isRegister ? "Creating…" : "Logging in…";
+
+      try {
+        if (isRegister) {
+          const cred = await auth.createUserWithEmailAndPassword(email, password);
+          // Store display name so it shows in game
+          await cred.user.updateProfile({ displayName: username });
+        } else {
+          await auth.signInWithEmailAndPassword(email, password);
+        }
+        // onAuthStateChanged fires → _loadPlayer() called automatically
+      } catch (err) {
+        errEl.textContent = _authErrorMsg(err.code);
+        btnSubmit.disabled = false;
+        btnLabel.textContent = isRegister ? "Create Account" : "Login";
+      }
+    });
+
+    // Also submit on Enter key
+    document.querySelector(".auth-form").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") btnSubmit.click();
+    });
+  }
+
+  function _authErrorMsg(code) {
+    const map = {
+      "auth/user-not-found":       "No account with that email.",
+      "auth/wrong-password":       "Wrong password.",
+      "auth/email-already-in-use": "That email is already registered.",
+      "auth/invalid-email":        "Invalid email address.",
+      "auth/weak-password":        "Password is too weak.",
+      "auth/too-many-requests":    "Too many attempts — try again later.",
+      "auth/invalid-credential":   "Wrong email or password.",
+    };
+    return map[code] ?? "Something went wrong. Try again.";
+  }
 
   /* ──────────────────────────────────────────────────────────
      LOAD PLAYER from Firestore
@@ -97,7 +184,7 @@ const App = (() => {
   async function _createNewPlayer(ref) {
     _userData = {
       uid:          _user.uid,
-      xUsername:    _user.displayName ?? _user.email?.split('@')[0] ?? "pigeon_owner",
+      username:     _user.displayName ?? _user.email?.split('@')[0] ?? "pigeon_owner",
       createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
       totalLogins:  0,
       loginDates:   [],
@@ -503,7 +590,7 @@ const App = (() => {
       row.className = "lb-row";
       row.innerHTML = `
         <span class="lb-rank">#${i + 1}</span>
-        <span class="lb-name">${d.xUsername ?? "Pigeon owner"}</span>
+        <span class="lb-name">${d.username ?? "Pigeon owner"}</span>
         <span class="lb-elo">${d.elo ?? 1000}</span>
       `;
       el.appendChild(row);

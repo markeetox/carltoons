@@ -45,11 +45,26 @@
       <div class="logo-mark">🐦</div>
       <h1 class="logo-title">Pigeons</h1>
       <p class="logo-sub">Carltoons</p>
-      <button class="btn-x" id="btn-x-login">
-        <i class="fa-brands fa-x-twitter"></i>
-        Login with X
-      </button>
-      <p class="login-note">Sign in with X to claim your egg</p>
+
+      <!-- tab switcher -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login">Login</button>
+        <button class="auth-tab" id="tab-register">Register</button>
+      </div>
+
+      <!-- shared form -->
+      <div class="auth-form">
+        <input type="text"     id="auth-username" class="auth-input" placeholder="Username" autocomplete="username" />
+        <input type="email"    id="auth-email"    class="auth-input" placeholder="Email" autocomplete="email" />
+        <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password" />
+        <p class="auth-error" id="auth-error"></p>
+        <button class="btn-primary" id="btn-auth-submit">
+          <i class="fa-solid fa-feather-pointed"></i>
+          <span id="btn-auth-label">Login</span>
+        </button>
+      </div>
+
+      <p class="login-note">Claim your egg. Raise your pigeon.<br/>Battle in the Tooniseum.</p>
     </div>
   </div>
 
