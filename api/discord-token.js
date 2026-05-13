@@ -1,59 +1,47 @@
 /* ════════════════════════════════════════════════════════════
-   api/discord-token.js  —  Vercel Edge Function
+   api/discord-token.js  —  Vercel Serverless Function (Node.js)
    ────────────────────────────────────────────────────────────
-   Handles the server-side part of Discord OAuth:
-   1. Exchanges the auth code for a Discord access token
-   2. Fetches the user's guild member info + roles
-   3. Checks for Captain / Pirate role
-   4. Mints a Firebase custom token
-   5. Returns { customToken, hasRole, discordId, username }
+   Runs in Node.js runtime (not Edge) so firebase-admin works.
 
    ENVIRONMENT VARIABLES (set in Vercel dashboard):
-     DISCORD_CLIENT_ID      — from Discord Developer Portal
-     DISCORD_CLIENT_SECRET  — from Discord Developer Portal (SECRET — never in client code)
-     DISCORD_BOT_TOKEN      — bot token for role lookup (SECRET)
-     DISCORD_GUILD_ID       — your server ID
-     FIREBASE_SERVICE_ACCOUNT — full Firebase service account JSON (stringify it)
-
-   HOW TO SET IN VERCEL:
-     vercel.com → your project → Settings → Environment Variables
-     Add each key above. They'll be available as process.env.KEY_NAME
+     DISCORD_CLIENT_ID       — Discord app client ID
+     DISCORD_CLIENT_SECRET   — Discord app client secret  ⚠️ secret
+     DISCORD_BOT_TOKEN       — Bot token for role lookup   ⚠️ secret
+     DISCORD_GUILD_ID        — Your server ID
+     FIREBASE_SERVICE_ACCOUNT — Full service account JSON as a string ⚠️ secret
+                                 (copy the entire JSON file contents as one value)
    ════════════════════════════════════════════════════════════ */
 
-// Firebase Admin — loaded server-side only (safe)
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+const admin = require("firebase-admin");
 
-/* ── Init Firebase Admin (once) ── */
-function getAdminAuth() {
-  if (!getApps().length) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    initializeApp({ credential: cert(serviceAccount) });
-  }
-  return getAuth();
-}
-
-/* ── Allowed Discord roles ── */
+/* ── Allowed Discord role IDs ── */
 const ALLOWED_ROLES = [
   "962202155341742120",  // Captain
   "911659311120400384",  // Pirate
 ];
 
-export default async function handler(req) {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+/* ── Init Firebase Admin once (survives warm lambda reuse) ── */
+function getAdminAuth() {
+  if (!admin.apps.length) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
   }
+  return admin.auth();
+}
 
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: "Invalid request body" }, 400);
-  }
+/* ── Main handler ── */
+module.exports = async function handler(req, res) {
+  // CORS headers (needed if called from browser)
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  const { code, redirectUri } = body;
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const { code, redirectUri } = req.body ?? {};
   if (!code || !redirectUri) {
-    return json({ error: "Missing code or redirectUri" }, 400);
+    return res.status(400).json({ error: "Missing code or redirectUri" });
   }
 
   try {
@@ -71,17 +59,23 @@ export default async function handler(req) {
     });
 
     const tokenData = await tokenRes.json();
-    if (tokenData.error) throw new Error(`Discord token error: ${tokenData.error}`);
+    if (tokenData.error) {
+      return res.status(400).json({ error: `Discord: ${tokenData.error_description ?? tokenData.error}` });
+    }
 
     const accessToken = tokenData.access_token;
 
-    /* ── Step 2: Get Discord user info ── */
-    const userRes  = await fetch("https://discord.com/api/users/@me", {
+    /* ── Step 2: Get Discord user ── */
+    const userRes = await fetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const discordUser = await userRes.json();
     const discordId   = discordUser.id;
     const username    = discordUser.username;
+
+    if (!discordId) {
+      return res.status(400).json({ error: "Could not fetch Discord user" });
+    }
 
     /* ── Step 3: Check guild membership + roles via bot token ── */
     const memberRes = await fetch(
@@ -94,30 +88,21 @@ export default async function handler(req) {
       const member = await memberRes.json();
       hasRole = (member.roles ?? []).some((r) => ALLOWED_ROLES.includes(r));
     }
+    // If 404 — user isn't in the server at all, hasRole stays false
 
     /* ── Step 4: Mint Firebase custom token ── */
-    // uid format matches the pattern in app.js: discord_{id}@othersea.app
-    const firebaseUid  = `discord_${discordId}`;
-    const adminAuth    = getAdminAuth();
-    const customToken  = await adminAuth.createCustomToken(firebaseUid, {
+    // uid = "discord_{discordId}" — deterministic, same pattern as Potos!
+    const firebaseUid = `discord_${discordId}`;
+    const adminAuth   = getAdminAuth();
+    const customToken = await adminAuth.createCustomToken(firebaseUid, {
       discordId,
       username,
-      hasRole,
     });
 
-    return json({ customToken, hasRole, discordId, username });
+    return res.status(200).json({ customToken, hasRole, discordId, username });
 
   } catch (err) {
-    console.error("[discord-token]", err);
-    return json({ error: err.message }, 500);
+    console.error("[discord-token] Error:", err);
+    return res.status(500).json({ error: "Internal server error", detail: err.message });
   }
-}
-
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-export const config = { runtime: "edge" };
+};

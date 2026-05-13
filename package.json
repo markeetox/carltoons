@@ -1,0 +1,12 @@
+{
+  "name": "tooniseum",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pigeon Tamagotchi battle game — pure static site, no build step",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
