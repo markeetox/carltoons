@@ -3,6 +3,42 @@
    ════════════════════════════════════════════════════════════ */
 
 /* ──────────────────────────────────────────────────────────
+   SVG fallbacks — used when PNG assets are not yet uploaded.
+   Each returns a data: URI that browsers render inline.
+────────────────────────────────────────────────────────────── */
+const FALLBACK_COLORS = {
+  "leg-far":  "#c8a040",
+  "wings":    "#7b5ea7",
+  "torso":    "#3d7a5a",
+  "head":     "#4a7fb5",
+  "leg-near": "#b05030",
+};
+
+function _svgLayerFallback(layerClass, variant) {
+  const color = FALLBACK_COLORS[layerClass] ?? "#555";
+  const label = layerClass.replace("-"," ") + " " + variant;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
+    <rect width="500" height="500" fill="none"/>
+    <ellipse cx="250" cy="250" rx="80" ry="90" fill="${color}" opacity="0.7"/>
+    <text x="250" y="255" text-anchor="middle" font-size="18" fill="white" font-family="sans-serif">${label}</text>
+  </svg>`;
+  return "data:image/svg+xml;base64," + btoa(svg);
+}
+
+function _svgEggFallback(state) {
+  const cracks = state === "egg_crack2" ? 2 : state === "egg_crack1" ? 1 : 0;
+  let crackLines = "";
+  if (cracks >= 1) crackLines += `<line x1="230" y1="120" x2="250" y2="180" stroke="#6b4c2a" stroke-width="3"/>`;
+  if (cracks >= 2) crackLines += `<line x1="270" y1="140" x2="290" y2="200" stroke="#6b4c2a" stroke-width="2"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
+    <rect width="500" height="500" fill="none"/>
+    <ellipse cx="250" cy="260" rx="130" ry="170" fill="#e8dcc8" stroke="#b8a080" stroke-width="4"/>
+    ${crackLines}
+  </svg>`;
+  return "data:image/svg+xml;base64," + btoa(svg);
+}
+
+/* ──────────────────────────────────────────────────────────
    generatePigeonTraits(seed)
    Given a deterministic seed string (Discord user ID works
    perfectly), returns a traits object like:

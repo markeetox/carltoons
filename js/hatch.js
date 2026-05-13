@@ -186,9 +186,10 @@ const Hatch = (() => {
 
   /* ── Public init (called once from app.js) ── */
   function init() {
-    initNameStep();
-    initRevealStep();
-    initFinishStep();
+    // Guard — only wire up elements that exist
+    if (document.getElementById("btn-confirm-name")) initNameStep();
+    if (document.getElementById("btn-next-reveal"))  initRevealStep();
+    if (document.getElementById("btn-finish-hatch")) initFinishStep();
   }
 
   return { init, start };

@@ -45,14 +45,10 @@ const App = (() => {
      BOOT
   ────────────────────────────────────────────────────────────── */
   function boot() {
-    Hatch.init();
-    Battle.init();
-    _initNav();
-    _initEggActions();
-    _initCareActions();
-    _initBattleButtons();
+    // Auth form first — always available on login screen
+    _initAuthForm();
 
-    // Watch auth state
+    // Watch auth state — routes to correct screen
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
         showScreen("login");
@@ -62,15 +58,25 @@ const App = (() => {
       await _loadPlayer();
     });
 
-
-    // Auth form — tab switching + submit
-    _initAuthForm();
+    // Wire up everything else safely after DOM is ready
+    _initNav();
+    _initEggActions();
+    _initCareActions();
+    _initBattleButtons();
+    Hatch.init();
+    Battle.init();
 
     // Logout
-    document.getElementById("btn-logout").addEventListener("click", async () => {
-      await auth.signOut();
-      showScreen("login");
-    });
+    const logoutBtn = document.getElementById("btn-logout");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        await auth.signOut();
+        _user = null;
+        _userData = null;
+        _pigeon = null;
+        showScreen("login");
+      });
+    }
   }
 
 
@@ -255,6 +261,16 @@ const App = (() => {
      EGG SCREEN
   ────────────────────────────────────────────────────────────── */
   function _renderEggScreen() {
+    // Set nest background safely — no 404 errors
+    ["nest-bg-egg","nest-bg-hatch"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const img = new Image();
+      img.onload = () => { el.style.backgroundImage = `url('assets/egg/nest_bg.png')`; };
+      img.onerror = () => {}; // silently skip if not uploaded yet
+      img.src = "assets/egg/nest_bg.png";
+    });
+
     const egg = _pigeon ?? {};  // might not exist yet, that's fine
     const actionLog   = egg.incubationLog ?? [];
     const daysDone    = actionLog.filter(Boolean).length;
@@ -265,9 +281,12 @@ const App = (() => {
     // Egg image state
     const eggImg = document.getElementById("egg-img");
     if (eggImg) {
-      if (daysDone >= 6)       eggImg.src = PIGEON_CONFIG.eggPath("egg_crack2");
-      else if (daysDone >= 3)  eggImg.src = PIGEON_CONFIG.eggPath("egg_crack1");
-      else                     eggImg.src = PIGEON_CONFIG.eggPath("egg_whole");
+      const eggState = daysDone >= 6 ? "egg_crack2" : daysDone >= 3 ? "egg_crack1" : "egg_whole";
+      eggImg.src = PIGEON_CONFIG.eggPath(eggState);
+      eggImg.onerror = () => {
+        eggImg.onerror = null;
+        eggImg.src = _svgEggFallback(eggState);
+      };
     }
 
     document.getElementById("egg-days-label").textContent =
