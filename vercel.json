@@ -2,12 +2,6 @@
   "framework": null,
   "buildCommand": null,
   "outputDirectory": ".",
-  "functions": {
-    "api/discord-token.js": {
-      "runtime": "nodejs20.x",
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     { "source": "/auth/discord", "destination": "/auth/discord.html" }
   ],
