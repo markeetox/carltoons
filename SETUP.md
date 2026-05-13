@@ -1,0 +1,287 @@
+# Tooniseum — Setup Guide
+
+Everything you need to go from zero to deployed.
+
+---
+
+## 1. Project structure
+
+```
+tooniseum/
+├── index.html                  ← main game shell
+├── manifest.json               ← PWA manifest
+├── sw.js                       ← service worker
+├── vercel.json                 ← Vercel routing config
+├── generate_placeholders.py    ← run once to make placeholder PNGs
+│
+├── auth/
+│   └── discord.html            ← Discord OAuth callback page
+│
+├── api/
+│   └── discord-token.js        ← Vercel edge function (server-side secret handling)
+│
+├── css/
+│   └── style.css               ← all styles
+│
+├── js/
+│   ├── config.js               ← ← ← YOUR VARIABLES GO HERE
+│   ├── pigeon.js               ← generation, compositor, animations
+│   ├── hatch.js                ← hatch sequence controller
+│   ├── battle.js               ← battle engine
+│   └── app.js                  ← main app + Firebase + routing
+│
+└── assets/
+    ├── pigeon/
+    │   ├── head/               head_1.png … head_5.png
+    │   ├── torso/              torso_1.png … torso_5.png
+    │   ├── wings/              wings_1.png … wings_5.png  (note: wings_ not wing_)
+    │   ├── leg_far/            leg_far_1.png … leg_far_5.png
+    │   └── leg_near/           leg_near_1.png … leg_near_5.png
+    ├── egg/
+    │   ├── egg_whole.png
+    │   ├── egg_crack1.png
+    │   ├── egg_crack2.png
+    │   └── nest_bg.png
+    └── icons/
+        ├── icon-192.png
+        └── icon-512.png
+```
+
+---
+
+## 2. Firebase setup
+
+### 2a. Create project (if not using potos-rgp)
+1. Go to [console.firebase.google.com](https://console.firebase.google.com)
+2. Create project or select `potos-rgp`
+3. Add a **Web app** → copy the config object
+
+### 2b. Fill in `js/config.js`
+Replace every `REPLACE_WITH_...` value:
+
+```js
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSy...",
+  authDomain:        "potos-rgp.firebaseapp.com",
+  projectId:         "potos-rgp",
+  storageBucket:     "potos-rgp.appspot.com",
+  messagingSenderId: "1234567890",
+  appId:             "1:1234...",
+};
+```
+
+### 2c. Enable Authentication
+Firebase Console → Authentication → Sign-in method → **Enable "Custom token"**
+(Discord login uses custom tokens minted server-side — no other provider needed)
+
+### 2d. Firestore rules
+Firebase Console → Firestore → Rules → paste:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Players can only read/write their own document
+    match /players/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Pigeons: owner can write, anyone authenticated can read (for matchmaking)
+    match /pigeons/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Battles: any authenticated player can create/read/update
+    // (host and guest both need write access to submit moves)
+    // Delete only by participants (for cleanup after 30s)
+    match /battles/{battleId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+                    && (resource.data.hostId == request.auth.uid
+                        || resource.data.guestId == request.auth.uid);
+      allow delete: if request.auth != null
+                    && (resource.data.hostId == request.auth.uid
+                        || resource.data.guestId == request.auth.uid);
+    }
+  }
+}
+```
+
+### 2e. Firebase service account (for the edge function)
+Firebase Console → Project Settings → Service accounts → **Generate new private key**
+→ download the JSON file
+→ copy its entire contents as a single-line string for the Vercel env var (see step 4)
+
+---
+
+## 3. Discord setup
+
+### 3a. OAuth2 redirect URI
+Discord Developer Portal → your app → OAuth2 → Redirects → Add:
+```
+https://world.potos.io/auth/discord
+```
+Also add `http://localhost:3000/auth/discord` for local dev.
+
+### 3b. Bot permissions
+Your Discord bot needs:
+- `GUILD_MEMBERS` intent enabled (Privileged Gateway Intents)
+- Be a member of your server
+
+### 3c. Values to collect
+| Variable | Where to find |
+|---|---|
+| `DISCORD_CLIENT_ID` | Developer Portal → your app → General Information |
+| `DISCORD_CLIENT_SECRET` | Developer Portal → your app → OAuth2 → Client Secret |
+| `DISCORD_BOT_TOKEN` | Developer Portal → your app → Bot → Token |
+| `DISCORD_GUILD_ID` | Discord: right-click your server → Copy Server ID |
+
+---
+
+## 4. Vercel environment variables
+
+In [vercel.com](https://vercel.com) → your project → **Settings → Environment Variables**,
+add these (all environments: Production + Preview + Development):
+
+| Key | Value |
+|---|---|
+| `DISCORD_CLIENT_ID` | your Discord app client ID |
+| `DISCORD_CLIENT_SECRET` | your Discord app client secret ⚠️ secret |
+| `DISCORD_BOT_TOKEN` | your bot token ⚠️ secret |
+| `DISCORD_GUILD_ID` | `852258241118994484` |
+| `FIREBASE_SERVICE_ACCOUNT` | paste the entire service account JSON as one line |
+
+> ⚠️ **Never put CLIENT_SECRET, BOT_TOKEN, or SERVICE_ACCOUNT in any client-side file.**
+> They live only in Vercel env vars, used only by `api/discord-token.js`.
+
+---
+
+## 5. GitHub → Vercel deploy
+
+```bash
+# One-time setup
+git init
+git remote add origin https://github.com/YOUR_USERNAME/tooniseum.git
+
+# Deploy
+git add .
+git commit -m "init"
+git push -u origin main
+```
+
+Then in Vercel:
+- Import the GitHub repo
+- Framework preset: **Other** (no build step — pure static)
+- Root directory: `/` (leave as default)
+- Build command: leave **empty**
+- Output directory: leave **empty**
+
+Every `git push` auto-deploys. ✅
+
+---
+
+## 6. Adding your real pigeon PNGs
+
+Just drop your files into the correct paths. The placeholder PNGs are already there
+so the game works immediately. Replace them one layer at a time as you finish drawing:
+
+```
+assets/pigeon/head/head_1.png      ← replace placeholder with your art
+assets/pigeon/head/head_2.png
+...etc
+```
+
+**PNG requirements:**
+- 500 × 500 px
+- Transparent background (PNG-24 / RGBA)
+- All layers same canvas size
+- Use a registration guide cross at the hip/neck pivot during drawing, delete before export
+
+---
+
+## 7. Local development
+
+No build step needed. Just serve the folder:
+
+```bash
+# Python (built in)
+python3 -m http.server 3000
+
+# OR Node
+npx serve .
+
+# OR VS Code Live Server extension
+```
+
+Open `http://localhost:3000`
+
+For Discord OAuth to work locally, temporarily change `redirectUri` in `js/config.js`:
+```js
+redirectUri: "http://localhost:3000/auth/discord",
+```
+(remember to revert before committing)
+
+---
+
+## 8. Firestore data model
+
+```
+players/{uid}
+  uid            string    Firebase UID (= "discord_{discordId}")
+  discordId      string
+  createdAt      timestamp
+  totalLogins    number
+  loginDates     string[]  ["2025-01-01", "2025-01-02", ...]
+  elo            number    default: 1000
+  battleLog      object[]  [{ won, opponent, rounds, date }, ...]
+  hasPigeon      boolean
+  pigeonId       string
+
+pigeons/{uid}
+  uid            string
+  name           string    player-chosen name
+  traits         object    { head:2, torso:4, wings:1, leg_far:3, leg_near:3 }
+  stats          object    { yolo, fomo, hodl, fud, ngmi, wagmi }
+  level          number    default: 1
+  bond           number    0–100
+  hatched        boolean
+  hatchDate      string
+  incubationLog  string[]  7 entries, e.g. ["shake","heat","lick",...]
+  lastFed        string    date string or null
+  lastPlayed     string
+  lastTrained    string
+```
+
+---
+
+## 9. Adding PWA to index.html (already done — just verify)
+
+These two lines must be in `<head>`:
+```html
+<link rel="manifest" href="/manifest.json" />
+```
+
+And before `</body>`:
+```html
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+</script>
+```
+
+---
+
+## 10. Role IDs reference
+
+| Role | ID |
+|---|---|
+| Captain | `962202155341742120` |
+| Pirate | `911659311120400384` |
+
+To add more allowed roles, update `ALLOWED_ROLES` in both:
+- `js/config.js` (client-side display only)
+- `api/discord-token.js` (the authoritative server-side check)
