@@ -103,26 +103,27 @@ const App = (() => {
     Hatch.init();
     Battle.init();
 
-    // Mood popup dismiss
-    const moodDismiss = document.getElementById("mood-dismiss");
-    if (moodDismiss) moodDismiss.addEventListener("click", _hideMoodPopup);
-    // Also dismiss on overlay background tap
-    const moodOverlay = document.getElementById("mood-overlay");
-    if (moodOverlay) moodOverlay.addEventListener("click", (e) => {
-      if (e.target === moodOverlay) _hideMoodPopup();
+    // Mood popup — use document-level delegation so it always fires
+    // regardless of z-index stacking or timing
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#mood-dismiss")) { _hideMoodPopup(); return; }
+      if (e.target.id === "mood-overlay")    { _hideMoodPopup(); return; }
     });
 
-    // Logout
-    const logoutBtn = document.getElementById("btn-logout");
-    if (logoutBtn) {
-      logoutBtn.addEventListener("click", async () => {
+    // Logout — always in the nav, works from any screen
+    document.addEventListener("click", async (e) => {
+      if (!e.target.closest("#btn-logout")) return;
+      // Simple confirm to prevent accidental logout
+      if (!confirm("Log out of Pigeons?")) return;
+      try {
         await auth.signOut();
-        _user = null;
-        _userData = null;
-        _pigeon = null;
-        showScreen("login");
-      });
-    }
+      } catch (_) {}
+      _user     = null;
+      _userData = null;
+      _pigeon   = null;
+      _hideMoodPopup();
+      showScreen("login");
+    });
   }
 
 
@@ -519,7 +520,16 @@ const App = (() => {
 
   function _hideMoodPopup() {
     const overlay = document.getElementById("mood-overlay");
-    if (overlay) overlay.classList.remove("show");
+    if (!overlay) return;
+    overlay.classList.remove("show");
+    // Belt-and-suspenders: force pointer-events off immediately
+    overlay.style.pointerEvents = "none";
+    // Re-enable pointer-events when shown again (handled by .show CSS)
+    overlay.addEventListener("transitionend", () => {
+      if (!overlay.classList.contains("show")) {
+        overlay.style.pointerEvents = "";
+      }
+    }, { once: true });
   }
 
   /* ──────────────────────────────────────────────────────────
