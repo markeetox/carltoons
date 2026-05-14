@@ -33,6 +33,43 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/* ── Utility: ms until midnight (next day reset) ── */
+function msUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  return midnight - now;
+}
+
+/* ── Utility: format ms as "Hh Mm Ss" countdown ── */
+function formatCountdown(ms) {
+  if (ms <= 0) return "Ready!";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2,"0")}m`;
+  if (m > 0) return `${m}m ${String(s).padStart(2,"0")}s`;
+  return `${s}s`;
+}
+
+/* ── Countdown ticker — updates all .js-countdown elements every second ── */
+let _countdownInterval = null;
+function startCountdownTicker() {
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  _countdownInterval = setInterval(() => {
+    const ms = msUntilMidnight();
+    document.querySelectorAll(".js-countdown").forEach((el) => {
+      el.textContent = formatCountdown(ms);
+    });
+  }, 1000);
+  // Tick immediately
+  const ms = msUntilMidnight();
+  document.querySelectorAll(".js-countdown").forEach((el) => {
+    el.textContent = formatCountdown(ms);
+  });
+}
+
 /* ════════════════════════════════════════════════════════════
    App — main namespace
    ════════════════════════════════════════════════════════════ */
@@ -255,6 +292,7 @@ const App = (() => {
      ROUTING after load
   ────────────────────────────────────────────────────────────── */
   function _routeAfterLoad() {
+    startCountdownTicker();
     if (!_userData.hasPigeon) {
       showScreen("egg");
       _renderEggScreen();
@@ -313,9 +351,24 @@ const App = (() => {
       if (usedToday) {
         grid.style.display = "none";
         usedMsg.style.display = "flex";
+        // Inject countdown into egg screen
+        let cdWrap = document.getElementById("egg-countdown");
+        if (!cdWrap) {
+          cdWrap = document.createElement("div");
+          cdWrap.id = "egg-countdown";
+          cdWrap.className = "countdown-wrap";
+          cdWrap.innerHTML = `
+            <span class="countdown-label">Next Nudge in</span>
+            <span class="countdown-timer js-countdown">—</span>
+            <span class="countdown-sub">Come back tomorrow to nurture your egg</span>
+          `;
+          usedMsg.parentNode.insertBefore(cdWrap, usedMsg.nextSibling);
+        }
       } else {
         grid.style.display = "grid";
         usedMsg.style.display = "none";
+        const cdWrap = document.getElementById("egg-countdown");
+        if (cdWrap) cdWrap.remove();
       }
     }
 
@@ -438,12 +491,39 @@ const App = (() => {
     updateBondUI(_pigeon.bond ?? 50);
     renderStatChips("quick-stats", stats);
 
-    // Mark care cards as done if already used today
+    // Mark care cards as done and show countdowns
+    const CARE_FIELDS  = { food: "lastFed", play: "lastPlayed", train: "lastTrained" };
+    const CARE_LABELS  = { food: "Next Feed", play: "Next Play", train: "Next Training" };
+    const CARE_SUBS    = { food: "Your bird is full", play: "Pigeon is tired", train: "Muscles need rest" };
+
     ["food","play","train"].forEach((care) => {
-      const btn = document.getElementById(`care-${care}`);
-      const field = care === "food" ? "lastFed" : care === "play" ? "lastPlayed" : "lastTrained";
-      if (btn) btn.classList.toggle("done", _pigeon[field] === today);
+      const btn   = document.getElementById(`care-${care}`);
+      const field = CARE_FIELDS[care];
+      const done  = _pigeon[field] === today;
+      if (btn) btn.classList.toggle("done", done);
     });
+
+    // Single countdown below care grid — shows time until midnight reset
+    let cdWrap = document.getElementById("care-countdown");
+    const anyDone = ["food","play","train"].some(
+      (c) => _pigeon[CARE_FIELDS[c]] === today
+    );
+    if (anyDone) {
+      if (!cdWrap) {
+        cdWrap = document.createElement("div");
+        cdWrap.id = "care-countdown";
+        cdWrap.className = "countdown-wrap";
+        cdWrap.innerHTML = `
+          <span class="countdown-label">Next Peck available in</span>
+          <span class="countdown-timer js-countdown">—</span>
+          <span class="countdown-sub">Actions reset at midnight</span>
+        `;
+        const careSection = document.querySelector(".care-section");
+        if (careSection) careSection.appendChild(cdWrap);
+      }
+    } else {
+      if (cdWrap) cdWrap.remove();
+    }
   }
 
   function _initCareActions() {

@@ -7,11 +7,12 @@
    Each returns a data: URI that browsers render inline.
 ────────────────────────────────────────────────────────────── */
 const FALLBACK_COLORS = {
-  "leg-far":  "#c8a040",
-  "wings":    "#7b5ea7",
+  "leg-near": "#b05030",   // right foot — bottom layer
+  "tail":     "#6d4c8a",   // tail — behind body
   "torso":    "#3d7a5a",
+  "leg-far":  "#c8a040",   // left leg — in front of body
   "head":     "#4a7fb5",
-  "leg-near": "#b05030",
+  "wings":    "#7b5ea7",   // wings — top layer
 };
 
 function _svgLayerFallback(layerClass, variant) {

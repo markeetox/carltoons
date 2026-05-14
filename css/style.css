@@ -6,28 +6,28 @@
 
 /* ── CSS Variables ──────────────────────────────────────── */
 :root {
-  /* Brand palette — black & white + purple */
-  --clr-bg:          #080808;
-  --clr-surface:     #111111;
-  --clr-surface2:    #1a1a1a;
-  --clr-border:      #242424;
-  --clr-border2:     #2e2e2e;
+  /* Brand palette — white + purple accents */
+  --clr-bg:          #ffffff;
+  --clr-surface:     #f5f5f5;
+  --clr-surface2:    #eeeeee;
+  --clr-border:      #e0e0e0;
+  --clr-border2:     #cccccc;
 
-  /* Text — pure white scale */
-  --clr-text:        #f5f5f5;
-  --clr-text-dim:    #888888;
-  --clr-text-muted:  #444444;
+  /* Text — dark scale on white */
+  --clr-text:        #111111;
+  --clr-text-dim:    #555555;
+  --clr-text-muted:  #aaaaaa;
 
-  /* Accents — purple only */
-  --clr-gold:        #a855f7;   /* primary CTA / highlights (purple replaces gold) */
-  --clr-gold-dim:    #3b0764;
-  --clr-green:       #c084fc;   /* positive / win — light purple */
-  --clr-red:         #e05c5c;   /* damage / danger — kept red for clarity */
-  --clr-blue:        #a855f7;   /* mapped to purple */
-  --clr-purple:      #a855f7;   /* main accent */
+  /* Accents — purple */
+  --clr-gold:        #a855f7;
+  --clr-gold-dim:    #e9d5ff;
+  --clr-green:       #7c3aed;   /* wins — deep purple */
+  --clr-red:         #dc2626;   /* damage / danger */
+  --clr-blue:        #a855f7;
+  --clr-purple:      #a855f7;
 
-  /* Pigeon art — neutral white */
-  --clr-pigeon:      #e5e5e5;
+  /* Pigeon art */
+  --clr-pigeon:      #333333;
 
   /* Spacing */
   --sp-xs:  4px;
@@ -61,6 +61,16 @@ body {
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
   user-select: none;
+}
+
+/* ── Desktop centering — max width container ── */
+.screen {
+  max-width: 480px;
+  margin: 0 auto;
+  left: 50% !important;
+  transform: translateX(-50%);
+  right: auto !important;
+  box-shadow: 0 0 0 1px var(--clr-border);
 }
 img { display: block; }
 button { cursor: pointer; border: none; background: none; font-family: var(--font-body); }
@@ -123,9 +133,11 @@ input { font-family: var(--font-body); }
    BOTTOM NAVIGATION
    ════════════════════════════════════════════════════════════ */
 .bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0;
+  position: fixed; bottom: 0;
+  left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
   height: var(--nav-h);
-  background: var(--clr-surface);
+  background: var(--clr-bg);
   border-top: 1px solid var(--clr-border);
   display: flex; align-items: stretch;
   z-index: 100;
@@ -206,12 +218,13 @@ input { font-family: var(--font-body); }
   image-rendering: auto;
   pointer-events: none;
 }
-/* z-order matches layer spec */
-.p-layer.leg-far  { z-index: 1; }
-.p-layer.wings    { z-index: 2; }
-.p-layer.torso    { z-index: 3; }
-.p-layer.head     { z-index: 4; }
-.p-layer.leg-near { z-index: 5; }
+/* z-order: bottom→top: right foot, tail, body, left leg, head, wings */
+.p-layer.leg-near { z-index: 1; }   /* right foot — behind everything */
+.p-layer.tail     { z-index: 2; }   /* tail feathers — behind body */
+.p-layer.torso    { z-index: 3; }   /* body */
+.p-layer.leg-far  { z-index: 4; }   /* left leg — in front of body */
+.p-layer.head     { z-index: 5; }   /* head */
+.p-layer.wings    { z-index: 6; }   /* wings — on top */
 
 /* ── Idle animations ── */
 @keyframes torso-breathe {
@@ -295,13 +308,13 @@ input { font-family: var(--font-body); }
 }
 .login-bg {
   position: absolute; inset: 0; overflow: hidden;
-  background: radial-gradient(ellipse at 30% 40%, #1a1200 0%, #0d0d0d 70%);
+  background: radial-gradient(ellipse at 30% 40%, #f3e8ff 0%, #ffffff 70%);
 }
 .login-grain {
   position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
   background-size: 200px;
-  opacity: .5; pointer-events: none;
+  opacity: .15; pointer-events: none;
 }
 .login-content {
   position: relative; z-index: 1;
@@ -314,8 +327,8 @@ input { font-family: var(--font-body); }
 .logo-title {
   font-family: var(--font-display);
   font-size: 58px; letter-spacing: .05em;
-  color: #ffffff;
-  text-shadow: 0 0 40px #a855f760;
+  color: var(--clr-text);
+  text-shadow: 0 0 40px #a855f730;
 }
 .logo-sub {
   font-family: var(--font-display);
@@ -764,11 +777,10 @@ input { font-family: var(--font-body); }
 .toast {
   position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: var(--clr-surface2);
-  border: 1px solid var(--clr-border2);
+  background: var(--clr-text);
   border-radius: var(--r-pill);
   padding: 10px 20px;
-  font-size: 13px; color: var(--clr-text);
+  font-size: 13px; color: var(--clr-bg);
   opacity: 0; transition: opacity .25s, transform .25s;
   pointer-events: none; z-index: 200; white-space: nowrap;
 }
@@ -832,8 +844,8 @@ input { font-family: var(--font-body); }
 }
 .auth-input {
   width: 100%;
-  background: var(--clr-surface2);
-  border: 1px solid var(--clr-border2);
+  background: var(--clr-bg);
+  border: 1.5px solid var(--clr-border2);
   border-radius: var(--r-md);
   color: var(--clr-text);
   font-family: var(--font-body);
@@ -841,8 +853,9 @@ input { font-family: var(--font-body); }
   padding: 13px 16px;
   outline: none;
   transition: border-color .15s;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
 }
-.auth-input:focus { border-color: var(--clr-purple); }
+.auth-input:focus { border-color: var(--clr-purple); box-shadow: 0 0 0 3px #a855f720; }
 .auth-input::placeholder { color: var(--clr-text-muted); }
 
 /* Username field hidden on login tab */
@@ -865,4 +878,44 @@ input { font-family: var(--font-body); }
   background: #e05c5c18; border: 1px solid #e05c5c40;
   border-radius: var(--r-md); padding: 8px 14px;
   max-width: 320px; text-align: left; line-height: 1.5;
+}
+
+/* ════════════════════════════════════════════════════════════
+   COUNTDOWN TIMERS  ("Next Peck" / "Next Nudge")
+   ════════════════════════════════════════════════════════════ */
+.countdown-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: var(--sp-sm) var(--sp-md);
+}
+.countdown-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--clr-text-muted);
+}
+.countdown-timer {
+  font-family: var(--font-display);
+  font-size: 28px; letter-spacing: .04em;
+  color: var(--clr-purple);
+}
+.countdown-sub {
+  font-size: 11px; color: var(--clr-text-muted);
+}
+
+/* ── Override screen inset for true centering ── */
+.screen {
+  left: 0 !important;
+  transform: none !important;
+  right: 0 !important;
+}
+@media (min-width: 520px) {
+  .screen {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    right: auto !important;
+  }
+  .bottom-nav {
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+    width: 480px;
+  }
 }

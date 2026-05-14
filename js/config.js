@@ -49,7 +49,8 @@ const PIGEON_CONFIG = {
   totalVariants: 5,   // how many variants you drew per slot (1…5)
 
   // Z-order: back → front
-  layers: ["leg_far", "wings", "torso", "head", "leg_near"],
+  // Z-order bottom→top: leg_near(right foot), tail, torso, leg_far(left leg), head, wings
+  layers: ["leg_near", "tail", "torso", "leg_far", "head", "wings"],
 
   // ─────────────────────────────────────────────────────────
   // WHERE TO PUT YOUR PNG FILES:
@@ -59,6 +60,7 @@ const PIGEON_CONFIG = {
   //   assets/pigeon/wings/wings_1.png     …  wings_5.png
   //   assets/pigeon/leg_far/leg_far_1.png …  leg_far_5.png
   //   assets/pigeon/leg_near/leg_near_1.png … leg_near_5.png
+  //   assets/pigeon/tail/tail_1.png      … tail_5.png
   //
   //   assets/egg/egg_whole.png
   //   assets/egg/egg_crack1.png
