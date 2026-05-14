@@ -191,9 +191,16 @@
 
     <!-- Pigeon display -->
     <div class="pigeon-scene">
+      <!-- Background: place your art at assets/bg/home_bg.png
+           Falls back to nest if not found -->
+      <div class="pigeon-bg" id="pigeon-bg"></div>
+
       <div class="pigeon-rig idle" id="home-rig">
         <!-- layers injected by JS -->
       </div>
+
+      <!-- Mood indicator badge -->
+      <div class="mood-badge" id="mood-badge"></div>
 
       <!-- Bond meter -->
       <div class="bond-bar-wrap">
@@ -359,6 +366,23 @@
   </nav>
 
   <!-- ══════════════════════════════════════════════════════
+       MOOD POPUP  (daily fortune cookie from the pigeon)
+  ══════════════════════════════════════════════════════ -->
+  <div class="mood-overlay" id="mood-overlay">
+    <div class="mood-card" id="mood-card">
+      <div class="mood-pigeon-wrap">
+        <div class="pigeon-rig idle" id="mood-rig"></div>
+      </div>
+      <p class="mood-name" id="mood-name">—</p>
+      <p class="mood-says">says…</p>
+      <p class="mood-message" id="mood-message"></p>
+      <button class="btn-primary mood-dismiss" id="mood-dismiss">
+        <i class="fa-solid fa-feather-pointed"></i> Got it
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
        TOAST notification
   ══════════════════════════════════════════════════════ -->
   <div class="toast" id="toast"></div>
@@ -370,6 +394,7 @@
   <script src="js/pigeon.js"></script>
   <script src="js/hatch.js"></script>
   <script src="js/battle.js"></script>
+  <script src="js/messages.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

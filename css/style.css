@@ -919,3 +919,143 @@ input { font-family: var(--font-body); }
     width: 480px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   MOOD POPUP  (daily fortune cookie overlay)
+   ════════════════════════════════════════════════════════════ */
+.mood-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; padding: var(--sp-md);
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s ease;
+}
+.mood-overlay.show {
+  opacity: 1; pointer-events: all;
+}
+.mood-card {
+  background: var(--clr-bg);
+  border-radius: var(--r-lg);
+  padding: var(--sp-lg);
+  width: 100%; max-width: 340px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: var(--sp-md);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  transform: translateY(16px);
+  transition: transform .3s cubic-bezier(.22,.6,.36,1);
+  border: 1.5px solid var(--clr-border);
+}
+.mood-overlay.show .mood-card {
+  transform: translateY(0);
+}
+
+/* Mood-specific card accent colours */
+.mood-card.happy  { border-top: 4px solid #22c55e; }
+.mood-card.neutral{ border-top: 4px solid #a855f7; }
+.mood-card.upset  { border-top: 4px solid #f97316; }
+.mood-card.feral  { border-top: 4px solid #dc2626; }
+.mood-card.rehab  { border-top: 4px solid #eab308; }
+
+.mood-pigeon-wrap {
+  width: 160px; height: 160px;
+  position: relative; flex-shrink: 0;
+}
+.mood-pigeon-wrap .pigeon-rig {
+  width: 160px; height: 160px;
+}
+.mood-name {
+  font-family: var(--font-display);
+  font-size: 22px; letter-spacing: .04em;
+  color: var(--clr-text); margin-bottom: -8px;
+}
+.mood-says {
+  font-size: 12px; color: var(--clr-text-muted);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.mood-message {
+  font-size: 15px; color: var(--clr-text);
+  text-align: center; line-height: 1.65;
+  font-style: italic;
+  padding: var(--sp-sm) var(--sp-md);
+  background: var(--clr-surface);
+  border-radius: var(--r-md);
+  border-left: 3px solid var(--clr-purple);
+  width: 100%;
+}
+/* Override border colour per mood */
+.mood-card.happy  .mood-message { border-left-color: #22c55e; }
+.mood-card.upset  .mood-message { border-left-color: #f97316; }
+.mood-card.feral  .mood-message { border-left-color: #dc2626; }
+.mood-card.rehab  .mood-message { border-left-color: #eab308; }
+
+.mood-dismiss { margin-top: var(--sp-xs); }
+
+/* ── Mood badge on home screen ── */
+.mood-badge {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: var(--r-pill);
+  margin-top: var(--sp-xs);
+  display: none;
+}
+.mood-badge.show { display: inline-block; }
+.mood-badge.happy   { background: #dcfce7; color: #15803d; }
+.mood-badge.neutral { background: #f3e8ff; color: #7c3aed; }
+.mood-badge.upset   { background: #ffedd5; color: #c2410c; }
+.mood-badge.feral   { background: #fee2e2; color: #991b1b; }
+.mood-badge.rehab   { background: #fef9c3; color: #854d0e; }
+
+/* ════════════════════════════════════════════════════════════
+   PIGEON BACKGROUND
+   ════════════════════════════════════════════════════════════ */
+.pigeon-scene {
+  position: relative;
+}
+.pigeon-bg {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--r-lg);
+  opacity: 0.18;       /* subtle — pigeon sits on top */
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════════════
+   FERAL ANIMATION  (replaces idle when pigeon is feral)
+   ════════════════════════════════════════════════════════════ */
+@keyframes feral-shake {
+  0%,100% { transform: translate(0,0)      rotate(0deg);   }
+  10%      { transform: translate(-3px,1px) rotate(-2deg);  }
+  20%      { transform: translate(3px,-1px) rotate(2deg);   }
+  30%      { transform: translate(-4px,0)   rotate(-3deg);  }
+  40%      { transform: translate(2px,2px)  rotate(1deg);   }
+  50%      { transform: translate(-2px,-2px)rotate(-1deg);  }
+  60%      { transform: translate(4px,1px)  rotate(3deg);   }
+  70%      { transform: translate(-3px,-1px)rotate(-2deg);  }
+  80%      { transform: translate(3px,0)    rotate(2deg);   }
+  90%      { transform: translate(-1px,2px) rotate(-1deg);  }
+}
+@keyframes feral-eye {
+  0%,90%,100% { transform: scaleY(1); }
+  95%          { transform: scaleY(0.05); }  /* rapid angry blink */
+}
+
+.pigeon-rig.feral {
+  animation: feral-shake 0.35s ease-in-out infinite;
+  filter: saturate(0.4) contrast(1.3);  /* desaturated, harsh */
+}
+.pigeon-rig.feral .p-layer.head {
+  animation: feral-eye 1.8s ease-in-out infinite;
+}
+
+/* ── Rehab: slower, uncertain wobble ── */
+@keyframes rehab-wobble {
+  0%,100% { transform: rotate(0deg);   }
+  25%      { transform: rotate(-4deg);  }
+  75%      { transform: rotate(4deg);   }
+}
+.pigeon-rig.rehab {
+  animation: rehab-wobble 1.8s ease-in-out infinite;
+  filter: saturate(0.7);
+}

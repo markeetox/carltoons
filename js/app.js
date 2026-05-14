@@ -103,6 +103,15 @@ const App = (() => {
     Hatch.init();
     Battle.init();
 
+    // Mood popup dismiss
+    const moodDismiss = document.getElementById("mood-dismiss");
+    if (moodDismiss) moodDismiss.addEventListener("click", _hideMoodPopup);
+    // Also dismiss on overlay background tap
+    const moodOverlay = document.getElementById("mood-overlay");
+    if (moodOverlay) moodOverlay.addEventListener("click", (e) => {
+      if (e.target === moodOverlay) _hideMoodPopup();
+    });
+
     // Logout
     const logoutBtn = document.getElementById("btn-logout");
     if (logoutBtn) {
@@ -300,6 +309,8 @@ const App = (() => {
       showScreen("home");
       _renderHomeScreen();
       _renderProfileScreen();
+      // Show daily mood popup after a short delay
+      setTimeout(_showMoodPopup, 800);
     }
   }
 
@@ -472,6 +483,46 @@ const App = (() => {
   }
 
   /* ──────────────────────────────────────────────────────────
+     MOOD POPUP  (daily fortune cookie)
+  ────────────────────────────────────────────────────────────── */
+  function _showMoodPopup() {
+    if (!_pigeon) return;
+
+    const missedDays = _calcMissedDays(_userData.loginDates ?? []);
+    const rehabDay   = _pigeon.rehabDay ?? 0;
+    const { mood, message } = getDailyMessage(
+      _pigeon.bond ?? 50,
+      missedDays,
+      rehabDay,
+      _user?.uid ?? ""
+    );
+
+    // Build pigeon rig inside popup
+    const moodRig = document.getElementById("mood-rig");
+    if (moodRig) buildPigeonRig(moodRig, _pigeon.traits, { idle: mood !== "feral", [mood]: mood === "feral" });
+
+    const card = document.getElementById("mood-card");
+    if (card) {
+      card.className = `mood-card ${mood}`;
+    }
+
+    const nameEl = document.getElementById("mood-name");
+    if (nameEl) nameEl.textContent = _pigeon.name ?? "Your pigeon";
+
+    const msgEl = document.getElementById("mood-message");
+    if (msgEl) msgEl.textContent = `"${message}"`;
+
+    // Show overlay
+    const overlay = document.getElementById("mood-overlay");
+    if (overlay) overlay.classList.add("show");
+  }
+
+  function _hideMoodPopup() {
+    const overlay = document.getElementById("mood-overlay");
+    if (overlay) overlay.classList.remove("show");
+  }
+
+  /* ──────────────────────────────────────────────────────────
      HOME SCREEN
   ────────────────────────────────────────────────────────────── */
   function _renderHomeScreen() {
@@ -487,7 +538,44 @@ const App = (() => {
     const streakEl = document.getElementById("home-streak");
     if (streakEl) streakEl.textContent = streak;
 
-    buildPigeonRig(document.getElementById("home-rig"), traits, { idle: true });
+    // Pigeon background — place art at assets/bg/home_bg.png
+    const bgEl = document.getElementById("pigeon-bg");
+    if (bgEl) {
+      const bgImg = new Image();
+      bgImg.onload  = () => { bgEl.style.backgroundImage = "url('assets/bg/home_bg.png')"; };
+      bgImg.onerror = () => { bgEl.style.backgroundImage = "url('assets/egg/nest_bg.png')"; };
+      bgImg.src = "assets/bg/home_bg.png";
+    }
+
+    // Mood state
+    const missedDays = _calcMissedDays(_userData.loginDates ?? []);
+    const rehabDay   = _pigeon.rehabDay ?? 0;
+    const mood = getMood(_pigeon.bond ?? 50, missedDays, rehabDay);
+
+    // Build pigeon rig with correct animation state
+    const rig = document.getElementById("home-rig");
+    if (rig) {
+      buildPigeonRig(rig, traits, { idle: mood === "happy" || mood === "neutral" });
+      // Apply mood-specific animation class
+      rig.classList.remove("feral","rehab","low-hp");
+      if (mood === "feral") rig.classList.add("feral");
+      if (mood === "rehab") rig.classList.add("rehab");
+    }
+
+    // Mood badge
+    const MOOD_LABELS = {
+      happy:   "😄 Happy",
+      neutral: "😐 Neutral",
+      upset:   "😤 Upset",
+      feral:   "💀 FERAL",
+      rehab:   "🩹 Recovering",
+    };
+    const badge = document.getElementById("mood-badge");
+    if (badge) {
+      badge.className = `mood-badge show ${mood}`;
+      badge.textContent = MOOD_LABELS[mood] ?? mood;
+    }
+
     updateBondUI(_pigeon.bond ?? 50);
     renderStatChips("quick-stats", stats);
 
@@ -722,6 +810,96 @@ const App = (() => {
   /* ──────────────────────────────────────────────────────────
      HELPERS
   ────────────────────────────────────────────────────────────── */
+  /* ──────────────────────────────────────────────────────────
+     MISSED DAYS + PENALTY SYSTEM
+  ────────────────────────────────────────────────────────────── */
+
+  function _calcMissedDays(loginDates) {
+    // Count consecutive missed days going backwards from yesterday
+    let missed = 0;
+    const d = new Date();
+    d.setDate(d.getDate() - 1); // start from yesterday
+    while (missed < 30) {
+      const s = d.toISOString().slice(0, 10);
+      if ((loginDates ?? []).includes(s)) break;
+      missed++;
+      d.setDate(d.getDate() - 1);
+    }
+    return missed;
+  }
+
+  async function _applyPenalties(missedDays) {
+    if (!_pigeon || missedDays === 0) return;
+
+    const updates  = {};
+    let   bond     = _pigeon.bond ?? 50;
+    const stats    = { ..._pigeon.stats };
+    let   rehabDay = _pigeon.rehabDay ?? 0;
+
+    if (missedDays === 1) {
+      bond = Math.max(0, bond - 10);
+    } else if (missedDays === 2 || missedDays === 3) {
+      bond = Math.max(0, bond - 20);
+      // Drop one random stat by 2
+      const keys = Object.keys(stats);
+      const target = keys[Math.floor(Math.random() * keys.length)];
+      stats[target] = Math.max(0, (stats[target] ?? 0) - 2);
+      updates.stats = stats;
+    } else {
+      // 4+ days — feral decay
+      bond = Math.max(0, bond - Math.min(15 * (missedDays - 3), 50));
+      // Decay highest stat by 2% per missed day (capped at -10)
+      const highestKey = Object.keys(stats).reduce((a,b) => stats[a]>stats[b]?a:b);
+      const decay = Math.min(10, Math.floor(stats[highestKey] * 0.02 * missedDays));
+      stats[highestKey] = Math.max(0, stats[highestKey] - decay);
+      updates.stats = stats;
+    }
+
+    // If returning from feral (bond was < 15, now recovering)
+    if (_pigeon.bond < 15 && bond > (_pigeon.bond ?? 50)) {
+      rehabDay = 0; // reset rehab if somehow going up
+    }
+    if (bond < 15 && (_pigeon.bond ?? 50) >= 15) {
+      // Just crossed into feral — start feral state
+      updates.feralSince = todayStr();
+    }
+
+    updates.bond = bond;
+    updates.rehabDay = rehabDay;
+
+    await db.collection("pigeons").doc(_user.uid).update(updates);
+    _pigeon.bond    = bond;
+    _pigeon.stats   = stats;
+    _pigeon.rehabDay = rehabDay;
+    if (updates.feralSince) _pigeon.feralSince = updates.feralSince;
+  }
+
+  async function _checkRehab() {
+    // Called on login — if pigeon is feral and player is logging in,
+    // increment rehab counter. 3 consecutive days clears feral.
+    if (!_pigeon) return;
+    const bond = _pigeon.bond ?? 50;
+    if (bond >= 15) return; // not feral
+
+    const rehabDay = (_pigeon.rehabDay ?? 0) + 1;
+    const updates  = { rehabDay };
+
+    if (rehabDay >= 3) {
+      // Fully recovered! Give bond a boost and clear feral
+      updates.bond     = 35;
+      updates.rehabDay = 0;
+      updates.feralSince = null;
+      _pigeon.bond     = 35;
+      _pigeon.rehabDay = 0;
+      showToast("🕊️ Your pigeon trusts you again!");
+    } else {
+      _pigeon.rehabDay = rehabDay;
+      showToast(`🩹 Rehab day ${rehabDay}/3 — keep coming back!`);
+    }
+
+    await db.collection("pigeons").doc(_user.uid).update(updates);
+  }
+
   function _calcStreak(loginDates) {
     if (!loginDates.length) return 0;
     let streak = 0;
