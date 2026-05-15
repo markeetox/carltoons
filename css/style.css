@@ -63,15 +63,7 @@ body {
   user-select: none;
 }
 
-/* ── Desktop centering — max width container ── */
-.screen {
-  max-width: 480px;
-  margin: 0 auto;
-  left: 50% !important;
-  transform: translateX(-50%);
-  right: auto !important;
-  box-shadow: 0 0 0 1px var(--clr-border);
-}
+/* centering handled in .screen block below */
 img { display: block; }
 button { cursor: pointer; border: none; background: none; font-family: var(--font-body); }
 input { font-family: var(--font-body); }
@@ -80,14 +72,21 @@ input { font-family: var(--font-body); }
    SCREEN SYSTEM
    ════════════════════════════════════════════════════════════ */
 .screen {
-  position: fixed; inset: 0;
+  position: fixed;
+  top: 0; bottom: 0;
+  /* centered column — same width on every screen */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
   display: flex; flex-direction: column;
   padding-bottom: var(--nav-h);
   overflow-y: auto;
   opacity: 0; pointer-events: none;
   transition: opacity .25s ease;
   -webkit-overflow-scrolling: touch;
-  z-index: 1;        /* inactive screens sit below */
+  z-index: 1;
+  box-shadow: 0 0 0 1px var(--clr-border);
 }
 .screen.active {
   opacity: 1; pointer-events: all;
@@ -139,6 +138,8 @@ input { font-family: var(--font-body); }
   height: var(--nav-h);
   background: var(--clr-bg);
   border-top: 1px solid var(--clr-border);
+  border-left: 1px solid var(--clr-border);
+  border-right: 1px solid var(--clr-border);
   display: flex; align-items: stretch;
   z-index: 100;
 }
@@ -317,17 +318,18 @@ input { font-family: var(--font-body); }
    ════════════════════════════════════════════════════════════ */
 #screen-login {
   padding-bottom: 0;
-  background: var(--clr-bg);
+  background: var(--clr-purple);   /* solid purple */
 }
 .login-bg {
   position: absolute; inset: 0; overflow: hidden;
-  background: radial-gradient(ellipse at 30% 40%, #f3e8ff 0%, #ffffff 70%);
+  /* subtle dark-to-light purple gradient */
+  background: linear-gradient(160deg, #7c22c8 0%, #a855f7 50%, #c084fc 100%);
 }
 .login-grain {
   position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
   background-size: 200px;
-  opacity: .15; pointer-events: none;
+  opacity: .25; pointer-events: none;
 }
 .login-content {
   position: relative; z-index: 1;
@@ -336,21 +338,47 @@ input { font-family: var(--font-body); }
   height: 100%; gap: var(--sp-md);
   padding: var(--sp-xl);
 }
-.logo-mark { font-size: 72px; line-height: 1; }
-.logo-title {
-  font-family: var(--font-display);
-  font-size: 58px; letter-spacing: .05em;
-  color: var(--clr-text);
-  text-shadow: 0 0 40px #a855f730;
+
+/* Logo image — responsive, never overflows */
+.login-logo {
+  width: min(280px, 70%);    /* 280px max, shrinks on small screens */
+  height: auto;
+  object-fit: contain;
+  margin-bottom: var(--sp-sm);
+  filter: drop-shadow(0 4px 24px rgba(0,0,0,0.25));
 }
-.logo-sub {
-  font-family: var(--font-display);
-  font-size: 18px; color: var(--clr-purple);
-  margin-bottom: var(--sp-lg);
-  letter-spacing: .12em; text-transform: uppercase;
+
+/* Auth tabs and inputs on purple — override white defaults */
+.login-content .auth-tabs {
+  background: rgba(0,0,0,0.2);
+  border-color: rgba(255,255,255,0.15);
 }
+.login-content .auth-tab {
+  color: rgba(255,255,255,0.6);
+}
+.login-content .auth-tab.active {
+  background: #fff;
+  color: var(--clr-purple);
+}
+.login-content .auth-input {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.25);
+  color: #fff;
+}
+.login-content .auth-input::placeholder { color: rgba(255,255,255,0.5); }
+.login-content .auth-input:focus {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.2);
+}
+.login-content .btn-primary {
+  background: #fff;
+  color: var(--clr-purple);
+}
+.login-content .btn-primary:active { opacity: .85; }
+
 .login-note {
-  font-size: 12px; color: var(--clr-text-muted);
+  font-size: 12px; color: rgba(255,255,255,0.6);
   text-align: center; max-width: 240px; line-height: 1.5;
 }
 
@@ -913,25 +941,7 @@ input { font-family: var(--font-body); }
   font-size: 11px; color: var(--clr-text-muted);
 }
 
-/* ── Override screen inset for true centering ── */
-.screen {
-  left: 0 !important;
-  transform: none !important;
-  right: 0 !important;
-}
-@media (min-width: 520px) {
-  .screen {
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    right: auto !important;
-  }
-  .bottom-nav {
-    left: 50%;
-    transform: translateX(-50%);
-    right: auto;
-    width: 480px;
-  }
-}
+/* centering: handled in .screen and .bottom-nav base rules */
 
 /* ════════════════════════════════════════════════════════════
    MOOD POPUP  (daily fortune cookie overlay)
