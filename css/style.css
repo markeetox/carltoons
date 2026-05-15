@@ -218,31 +218,44 @@ input { font-family: var(--font-body); }
   image-rendering: auto;
   pointer-events: none;
 }
-/* z-order: bottom→top: right foot, tail, body, left leg, head, wings */
-.p-layer.leg-near { z-index: 1; }   /* right foot — behind everything */
-.p-layer.tail     { z-index: 2; }   /* tail feathers — behind body */
+/* z-order bottom→top: leg_far, tail, torso, leg_near, head, wings */
+.p-layer.leg-far  { z-index: 1; }   /* back leg — lowest */
+.p-layer.tail     { z-index: 2; }   /* tail feathers */
 .p-layer.torso    { z-index: 3; }   /* body */
-.p-layer.leg-far  { z-index: 4; }   /* left leg — in front of body */
+.p-layer.leg-near { z-index: 4; }   /* front leg — in front of body */
 .p-layer.head     { z-index: 5; }   /* head */
-.p-layer.wings    { z-index: 6; }   /* wings — on top */
+.p-layer.wings    { z-index: 6; }   /* wings — topmost */
 
-/* ── Idle animations ── */
+/* ── Idle animations ──
+   Legs (leg-far, leg-near) stay completely static.
+   Everything else gets its own subtle motion.
+── */
 @keyframes torso-breathe {
-  0%, 100% { transform: translateY(0)    scaleY(1);    }
-  50%       { transform: translateY(-4px) scaleY(1.02); }
+  0%, 100% { transform: translateY(0)     scaleY(1);    }
+  50%       { transform: translateY(-4px)  scaleY(1.02); }
 }
 @keyframes head-bob {
-  0%, 100% { transform: rotate(-2deg) translateY(0);   }
+  0%, 100% { transform: rotate(-2deg) translateY(0);    }
   35%       { transform: rotate( 2deg) translateY(-3px); }
   70%       { transform: rotate(-1deg) translateY(1px);  }
 }
 @keyframes wing-drift {
-  0%, 100% { transform: rotate(0deg)  translateY(0);  }
-  50%       { transform: rotate(2deg)  translateY(2px); }
+  0%, 100% { transform: rotate(0deg)   translateY(0);   }
+  40%       { transform: rotate(-2deg)  translateY(2px); }
+  80%       { transform: rotate( 1.5deg) translateY(1px);}
 }
-.pigeon-rig.idle .p-layer.torso   { animation: torso-breathe 2.6s ease-in-out infinite; }
-.pigeon-rig.idle .p-layer.head    { animation: head-bob       2.9s ease-in-out infinite; }
-.pigeon-rig.idle .p-layer.wings   { animation: wing-drift     2.6s ease-in-out infinite; }
+@keyframes tail-sway {
+  0%, 100% { transform: rotate(0deg)   translateY(0);   }
+  30%       { transform: rotate( 3deg)  translateY(1px); }
+  70%       { transform: rotate(-2deg)  translateY(2px); }
+}
+
+/* Apply animations — legs intentionally excluded */
+.pigeon-rig.idle .p-layer.torso    { animation: torso-breathe 2.6s ease-in-out infinite; }
+.pigeon-rig.idle .p-layer.head     { animation: head-bob      2.9s ease-in-out infinite; }
+.pigeon-rig.idle .p-layer.wings    { animation: wing-drift    2.6s ease-in-out infinite; }
+.pigeon-rig.idle .p-layer.tail     { animation: tail-sway     3.1s ease-in-out infinite; }
+/* leg-far and leg-near: no animation — static anchor */
 
 /* ── Attack (nod) ── */
 @keyframes attack-nod {
