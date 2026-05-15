@@ -376,9 +376,9 @@ const App = (() => {
       const el = document.getElementById(id);
       if (!el) return;
       const img = new Image();
-      img.onload = () => { el.style.backgroundImage = `url('assets/egg/nest_bg.png')`; };
+      img.onload = () => { el.style.backgroundImage = `url('/assets/egg/nest_bg.png')`; };
       img.onerror = () => {}; // silently skip if not uploaded yet
-      img.src = "assets/egg/nest_bg.png";
+      img.src = "/assets/egg/nest_bg.png";
     });
 
     const egg = _pigeon ?? {};  // might not exist yet, that's fine
@@ -393,7 +393,10 @@ const App = (() => {
     // Egg image state
     const eggImg = document.getElementById("egg-img");
     if (eggImg) {
-      const eggState = daysDone >= 6 ? "egg_crack2" : daysDone >= 3 ? "egg_crack1" : "egg_whole";
+      // For eggDays=3: crack1 at 1 day done, crack2 at 2 days done
+      const crack2 = Math.floor(GAME_CONFIG.eggDays * 0.67);
+      const crack1 = Math.floor(GAME_CONFIG.eggDays * 0.34);
+      const eggState = daysDone >= crack2 ? "egg_crack2" : daysDone >= crack1 ? "egg_crack1" : "egg_whole";
       eggImg.src = PIGEON_CONFIG.eggPath(eggState);
       eggImg.onerror = () => {
         eggImg.onerror = null;
@@ -622,13 +625,13 @@ const App = (() => {
     const streakEl = document.getElementById("home-streak");
     if (streakEl) streakEl.textContent = streak;
 
-    // Pigeon background — place art at assets/bg/home_bg.png
+    // Pigeon background — place art at /assets/bg/home_bg.png
     const bgEl = document.getElementById("pigeon-bg");
     if (bgEl) {
       const bgImg = new Image();
-      bgImg.onload  = () => { bgEl.style.backgroundImage = "url('assets/bg/home_bg.png')"; };
-      bgImg.onerror = () => { bgEl.style.backgroundImage = "url('assets/egg/nest_bg.png')"; };
-      bgImg.src = "assets/bg/home_bg.png";
+      bgImg.onload  = () => { bgEl.style.backgroundImage = "url('/assets/bg/home_bg.png')"; };
+      bgImg.onerror = () => { bgEl.style.backgroundImage = "url('/assets/egg/nest_bg.png')"; };
+      bgImg.src = "/assets/bg/home_bg.png";
     }
 
     // Mood state
@@ -888,26 +891,38 @@ const App = (() => {
      LEADERBOARD preview
   ────────────────────────────────────────────────────────────── */
   async function _renderLeaderboard() {
-    const snap = await db.collection("players")
-      .orderBy("elo", "desc")
-      .limit(5)
-      .get();
-
     const el = document.getElementById("leaderboard-preview");
     if (!el) return;
-    el.innerHTML = "";
+    el.innerHTML = `<p class="empty-state">Loading leaderboard…</p>`;
 
-    snap.docs.forEach((doc, i) => {
-      const d = doc.data();
-      const row = document.createElement("div");
-      row.className = "lb-row";
-      row.innerHTML = `
-        <span class="lb-rank">#${i + 1}</span>
-        <span class="lb-name">${d.username ?? "Pigeon owner"}</span>
-        <span class="lb-elo">${d.elo ?? 1000}</span>
-      `;
-      el.appendChild(row);
-    });
+    try {
+      const snap = await db.collection("players")
+        .orderBy("elo", "desc")
+        .limit(5)
+        .get();
+
+      el.innerHTML = "";
+
+      if (snap.empty) {
+        el.innerHTML = `<p class="empty-state">No players found</p>`;
+        return;
+      }
+
+      snap.docs.forEach((doc, i) => {
+        const d = doc.data();
+        const row = document.createElement("div");
+        row.className = "lb-row";
+        row.innerHTML = `
+          <span class="lb-rank">#${i + 1}</span>
+          <span class="lb-name">${d.username ?? "Pigeon owner"}</span>
+          <span class="lb-elo">${d.elo ?? 1000}</span>
+        `;
+        el.appendChild(row);
+      });
+    } catch (err) {
+      console.error("[App] Leaderboard failed:", err);
+      el.innerHTML = `<p class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i> Leaderboard temporarily unavailable</p>`;
+    }
   }
 
   /* ──────────────────────────────────────────────────────────
