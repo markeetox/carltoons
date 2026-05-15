@@ -339,9 +339,10 @@ input { font-family: var(--font-body); }
   padding: var(--sp-xl);
 }
 
-/* Logo image — responsive, never overflows */
+/* Logo image — 90% of the purple container width */
 .login-logo {
-  width: min(280px, 70%);    /* 280px max, shrinks on small screens */
+  width: 90%;
+  max-width: 420px;
   height: auto;
   object-fit: contain;
   margin-bottom: var(--sp-sm);
