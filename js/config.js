@@ -19,7 +19,7 @@ const API_BASE = "https://pigeons.vercel.app/api";
 
 /* ── Game constants ──────────────────────────────────────── */
 const GAME_CONFIG = {
-  eggDays:          7,
+  eggDays:          3,
   maxDailyActions:  1,
   statMax:          100,
   baseHP:           100,

@@ -33,6 +33,35 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/* ── localStorage action gate ──────────────────────────────
+   Written BEFORE the Firestore write so a refresh mid-write
+   can never grant a second action on the same day.
+   Key format:  pigeons_{uid}_{action}  e.g. pigeons_abc_egg
+   Value:       date string "2025-01-15"
+────────────────────────────────────────────────────────────── */
+function _lockAction(uid, action) {
+  try {
+    localStorage.setItem(`pigeons_${uid}_${action}`, todayStr());
+  } catch (_) {}
+}
+
+function _isActionLocked(uid, action) {
+  try {
+    return localStorage.getItem(`pigeons_${uid}_${action}`) === todayStr();
+  } catch (_) { return false; }
+}
+
+function _syncLocksFromFirestore(uid, pigeonData) {
+  // On load, sync localStorage with Firestore so they agree.
+  // Firestore always wins — if Firestore says used, lock it.
+  if (!pigeonData) return;
+  const today = todayStr();
+  if (pigeonData.lastActionDate === today) _lockAction(uid, "egg");
+  if (pigeonData.lastFed       === today)  _lockAction(uid, "food");
+  if (pigeonData.lastPlayed    === today)  _lockAction(uid, "play");
+  if (pigeonData.lastTrained   === today)  _lockAction(uid, "train");
+}
+
 /* ── Utility: ms until midnight (next day reset) ── */
 function msUntilMidnight() {
   const now = new Date();
@@ -77,6 +106,7 @@ const App = (() => {
   let _user     = null;   // Firebase auth user
   let _userData = null;   // Firestore player document
   let _pigeon   = null;   // Firestore pigeon document
+  let _howtoReturnScreen = "home";  // screen to return to from how-to
 
   /* ──────────────────────────────────────────────────────────
      BOOT
@@ -108,6 +138,24 @@ const App = (() => {
     document.addEventListener("click", (e) => {
       if (e.target.closest("#mood-dismiss")) { _hideMoodPopup(); return; }
       if (e.target.id === "mood-overlay")    { _hideMoodPopup(); return; }
+    });
+
+    // How-to-play buttons — any .btn-howto or back button
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".btn-howto")) {
+        // Remember which screen we came from to go back
+        _howtoReturnScreen = document.querySelector(".screen.active")?.id?.replace("screen-","") ?? "home";
+        showScreen("howto");
+        document.getElementById("bottom-nav").classList.add("hidden");
+        return;
+      }
+      if (e.target.closest("#btn-howto-back")) {
+        showScreen(_howtoReturnScreen ?? "home");
+        if (!["login","hatch"].includes(_howtoReturnScreen)) {
+          document.getElementById("bottom-nav").classList.remove("hidden");
+        }
+        return;
+      }
     });
 
     // Logout — always in the nav, works from any screen
@@ -266,7 +314,11 @@ const App = (() => {
   async function _loadPigeon() {
     if (!_userData.hasPigeon) return;
     const snap = await db.collection("pigeons").doc(_user.uid).get();
-    if (snap.exists) _pigeon = snap.data();
+    if (snap.exists) {
+      _pigeon = snap.data();
+      // Sync localStorage gates so refresh can never bypass them
+      _syncLocksFromFirestore(_user.uid, _pigeon);
+    }
   }
 
   /* ──────────────────────────────────────────────────────────
@@ -334,7 +386,9 @@ const App = (() => {
     const daysDone    = actionLog.filter(Boolean).length;
     const daysLeft    = GAME_CONFIG.eggDays - daysDone;
     const today       = todayStr();
-    const usedToday   = egg.lastActionDate === today;
+    // Check both Firestore data AND localStorage — whichever says used, it's used
+    const usedToday = egg.lastActionDate === today
+      || (_user && _isActionLocked(_user.uid, "egg"));
 
     // Egg image state
     const eggImg = document.getElementById("egg-img");
@@ -404,22 +458,42 @@ const App = (() => {
   async function _doEggAction(action) {
     const today = todayStr();
 
+    // ── Gate check: localStorage first (instant), then Firestore ──
+    if (_isActionLocked(_user.uid, "egg")) {
+      showToast("Already done today — come back tomorrow!");
+      _renderEggScreen();
+      return;
+    }
+
+    // Lock immediately — BEFORE the Firestore write
+    // This prevents a refresh mid-write from granting a second action
+    _lockAction(_user.uid, "egg");
+
     // Animate egg
     const wrap = document.getElementById("egg-wrap");
-    const animClass = `do-${action}`;
-    wrap.classList.remove("do-shake","do-heat","do-lick");
-    void wrap.offsetWidth;
-    wrap.classList.add(animClass);
-    if (action === "shake") setTimeout(() => wrap.classList.remove(animClass), 700);
-
-    // Get or create pigeon doc for incubation tracking
-    let pigeonRef = db.collection("pigeons").doc(_user.uid);
-    let pigeonSnap = await pigeonRef.get();
-
-    let incubationLog = [];
-    if (pigeonSnap.exists) {
-      incubationLog = pigeonSnap.data().incubationLog ?? [];
+    if (wrap) {
+      const animClass = `do-${action}`;
+      wrap.classList.remove("do-shake","do-heat","do-lick");
+      void wrap.offsetWidth;
+      wrap.classList.add(animClass);
+      if (action === "shake") setTimeout(() => wrap.classList.remove(animClass), 700);
     }
+
+    // Re-fetch pigeon doc to get latest incubation log
+    const pigeonRef  = db.collection("pigeons").doc(_user.uid);
+    const pigeonSnap = await pigeonRef.get();
+
+    // Double-check Firestore — belt and suspenders
+    if (pigeonSnap.exists && pigeonSnap.data().lastActionDate === today) {
+      showToast("Already done today — come back tomorrow!");
+      _pigeon = pigeonSnap.data();
+      _renderEggScreen();
+      return;
+    }
+
+    const incubationLog = pigeonSnap.exists
+      ? (pigeonSnap.data().incubationLog ?? [])
+      : [];
 
     incubationLog.push(action);
 
@@ -434,7 +508,7 @@ const App = (() => {
     else await pigeonRef.set(pigeonData);
 
     _pigeon = pigeonData;
-    showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} action recorded!`);
+    showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} done! Come back tomorrow.`);
 
     const daysDone = incubationLog.filter(Boolean).length;
     if (daysDone >= GAME_CONFIG.eggDays) {
@@ -597,7 +671,9 @@ const App = (() => {
     ["food","play","train"].forEach((care) => {
       const btn   = document.getElementById(`care-${care}`);
       const field = CARE_FIELDS[care];
-      const done  = _pigeon[field] === today;
+      // Check Firestore data OR localStorage — both count as done
+      const done  = _pigeon[field] === today
+        || (_user && _isActionLocked(_user.uid, care));
       if (btn) btn.classList.toggle("done", done);
     });
 
@@ -633,11 +709,30 @@ const App = (() => {
   }
 
   async function _doCareAction(careType) {
-    const today = todayStr();
+    const today  = todayStr();
     const field  = careType === "food" ? "lastFed" : careType === "play" ? "lastPlayed" : "lastTrained";
-    const bondGain = GAME_CONFIG[`bondGain${careType.charAt(0).toUpperCase() + careType.slice(1)}`] ?? 5;
 
-    // Stat to train (player could choose later — for now auto-pick weakest)
+    // ── Gate check: localStorage first ──
+    if (_isActionLocked(_user.uid, careType)) {
+      showToast("Already done today — come back tomorrow!");
+      return;
+    }
+
+    // Lock immediately before any async work
+    _lockAction(_user.uid, careType);
+
+    // Double-check Firestore
+    const snap = await db.collection("pigeons").doc(_user.uid).get();
+    if (snap.exists && snap.data()[field] === today) {
+      showToast("Already done today — come back tomorrow!");
+      _pigeon = snap.data();
+      _renderHomeScreen();
+      return;
+    }
+
+    const bondGain = GAME_CONFIG[`bondGain${careType.charAt(0).toUpperCase() + careType.slice(1)}`] ?? 5;
+    const newBond  = Math.min(GAME_CONFIG.bondMax, (_pigeon.bond ?? 50) + bondGain);
+
     let statUpdates = {};
     if (careType === "train") {
       const weakest = _weakestStat(_pigeon.stats);
@@ -646,8 +741,6 @@ const App = (() => {
         (_pigeon.stats[weakest] ?? 0) + 3
       );
     }
-
-    const newBond = Math.min(GAME_CONFIG.bondMax, (_pigeon.bond ?? 50) + bondGain);
 
     await db.collection("pigeons").doc(_user.uid).update({
       [field]: today,
@@ -662,7 +755,7 @@ const App = (() => {
       _pigeon.stats[w] = Math.min(GAME_CONFIG.statMax, (_pigeon.stats[w] ?? 0) + 3);
     }
 
-    const LABELS = { food: "🍞 Fed!", play: "🎮 Played!", train: "🏋️ Trained!" };
+    const LABELS = { food: "🍞 Fed! Come back tomorrow.", play: "🎮 Played! See you tomorrow.", train: "🏋️ Trained! Rest up." };
     showToast(LABELS[careType]);
     _renderHomeScreen();
     triggerAnimation(document.getElementById("home-rig"), "victory", 900);

@@ -87,7 +87,10 @@
   <div id="screen-egg" class="screen">
     <div class="top-bar">
       <span class="top-bar-title">Your Egg</span>
-      <span class="streak-badge"><i class="fa-solid fa-fire"></i> <span id="streak-count">0</span> day streak</span>
+      <div class="top-bar-right">
+        <span class="streak-badge"><i class="fa-solid fa-fire"></i> <span id="streak-count">0</span> day streak</span>
+        <button class="btn-icon btn-howto" id="btn-howto-egg"><i class="fa-solid fa-circle-info"></i></button>
+      </div>
     </div>
 
     <div class="egg-scene">
@@ -195,7 +198,10 @@
   <div id="screen-home" class="screen">
     <div class="top-bar">
       <span class="top-bar-title" id="home-pigeon-name">Loading…</span>
-      <span class="streak-badge"><i class="fa-solid fa-fire"></i> <span id="home-streak">0</span></span>
+      <div class="top-bar-right">
+        <span class="streak-badge"><i class="fa-solid fa-fire"></i> <span id="home-streak">0</span></span>
+        <button class="btn-icon btn-howto" id="btn-howto-home"><i class="fa-solid fa-circle-info"></i></button>
+      </div>
     </div>
 
     <!-- Pigeon display -->
@@ -352,6 +358,93 @@
       <div class="leaderboard-preview" id="leaderboard-preview">
         <!-- top 5 injected by JS -->
       </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN: HOW TO PLAY
+  ══════════════════════════════════════════════════════ -->
+  <div id="screen-howto" class="screen screen-cinematic">
+    <div class="top-bar">
+      <button class="btn-icon" id="btn-howto-back"><i class="fa-solid fa-arrow-left"></i></button>
+      <span class="top-bar-title">How to Play</span>
+      <span></span>
+    </div>
+
+    <div class="howto-content">
+
+      <div class="howto-section">
+        <h2 class="howto-title"><i class="fa-solid fa-egg"></i> The Egg</h2>
+        <p class="howto-text">When you first join, you get an egg. Every day for <strong>3 days</strong> you must perform one action to influence your future pigeon's stats:</p>
+        <div class="howto-actions">
+          <div class="howto-action">
+            <span class="howto-action-icon">🫳</span>
+            <div><strong>Shake</strong> — boosts YOLO &amp; FOMO (aggressive, fast)</div>
+          </div>
+          <div class="howto-action">
+            <span class="howto-action-icon">🔥</span>
+            <div><strong>Heat</strong> — boosts HODL &amp; WAGMI (tanky, resilient)</div>
+          </div>
+          <div class="howto-action">
+            <span class="howto-action-icon">👅</span>
+            <div><strong>Lick</strong> — boosts FUD &amp; NGMI (chaotic, big HP)</div>
+          </div>
+        </div>
+        <p class="howto-text">After 3 days your egg hatches into a unique pigeon — one of 3,888 possible combinations.</p>
+      </div>
+
+      <div class="howto-section">
+        <h2 class="howto-title"><i class="fa-solid fa-heart"></i> Daily Care</h2>
+        <p class="howto-text">Once hatched, your pigeon needs daily attention. You get <strong>one of each action per day</strong> — they reset at midnight.</p>
+        <div class="howto-actions">
+          <div class="howto-action">
+            <span class="howto-action-icon"><i class="fa-solid fa-bread-slice"></i></span>
+            <div><strong>Feed</strong> — increases bond +8</div>
+          </div>
+          <div class="howto-action">
+            <span class="howto-action-icon"><i class="fa-solid fa-gamepad"></i></span>
+            <div><strong>Play</strong> — increases bond +10</div>
+          </div>
+          <div class="howto-action">
+            <span class="howto-action-icon"><i class="fa-solid fa-dumbbell"></i></span>
+            <div><strong>Train</strong> — increases bond +5, grows your weakest stat</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="howto-section">
+        <h2 class="howto-title"><i class="fa-solid fa-chart-bar"></i> Stats</h2>
+        <div class="howto-stats">
+          <div class="howto-stat"><span class="hs-name">YOLO</span><span class="hs-desc">Attack power — high risk, high reward</span></div>
+          <div class="howto-stat"><span class="hs-name">FOMO</span><span class="hs-desc">Speed — who moves first in battle</span></div>
+          <div class="howto-stat"><span class="hs-name">HODL</span><span class="hs-desc">Defense — reduces damage taken</span></div>
+          <div class="howto-stat"><span class="hs-name">FUD</span><span class="hs-desc">Debuff — chance to confuse opponent</span></div>
+          <div class="howto-stat"><span class="hs-name">NGMI</span><span class="hs-desc">HP pool — how much punishment you can take</span></div>
+          <div class="howto-stat"><span class="hs-name">WAGMI</span><span class="hs-desc">Recovery — HP regen between rounds</span></div>
+        </div>
+      </div>
+
+      <div class="howto-section">
+        <h2 class="howto-title"><i class="fa-solid fa-skull-crossbones"></i> Tooniseum Battles</h2>
+        <p class="howto-text">Challenge other players in turn-based battles. Each round both players pick a move simultaneously — Rock Paper Scissors style:</p>
+        <div class="howto-rps">
+          <div class="howto-rps-row"><span>🐦 Peck</span><span>beats</span><span>💨 Dodge</span></div>
+          <div class="howto-rps-row"><span>🌀 Swoop</span><span>beats</span><span>🐦 Peck</span></div>
+          <div class="howto-rps-row"><span>💨 Dodge</span><span>beats</span><span>🌀 Swoop</span></div>
+        </div>
+        <p class="howto-text">Your stats modify the outcome — YOLO adds damage variance, FUD can make opponents miss, FOMO determines round order. Win to gain ELO, lose to drop it.</p>
+      </div>
+
+      <div class="howto-section howto-section--warning">
+        <h2 class="howto-title"><i class="fa-solid fa-triangle-exclamation"></i> Streaks &amp; Penalties</h2>
+        <div class="howto-penalty">
+          <div class="howto-penalty-row"><span class="hp-days">Miss 1 day</span><span>Bond −10. Your pigeon is cold.</span></div>
+          <div class="howto-penalty-row"><span class="hp-days">Miss 2–3 days</span><span>Bond −20, one random stat −2, battle debuff next fight.</span></div>
+          <div class="howto-penalty-row"><span class="hp-days">Miss 4+ days</span><span>FERAL MODE. Bond &amp; stats decay daily. Pigeon vibrates with rage.</span></div>
+        </div>
+        <p class="howto-text howto-text--tip">💡 Returning from feral? Log in 3 days in a row to earn your pigeon's trust back.</p>
+      </div>
+
     </div>
   </div>
 

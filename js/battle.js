@@ -61,17 +61,19 @@ const Battle = (() => {
 
     _setStatus("🔍 Searching for an opponent…");
 
-    // Look for an open waiting battle that isn't ours
+    // Fetch waiting battles with a simple single-field query (no compound
+    // index needed). Filter out our own battle client-side.
     const snap = await db.collection("battles")
       .where("status", "==", "waiting")
-      .where("hostId", "!=", _myUid)
-      .orderBy("hostId")
       .orderBy("createdAt")
-      .limit(1)
+      .limit(10)
       .get();
 
-    if (!snap.empty) {
-      await _joinBattle(snap.docs[0], playerData);
+    // Find first open battle that belongs to someone else
+    const joinable = snap.docs.find((d) => d.data().hostId !== _myUid);
+
+    if (joinable) {
+      await _joinBattle(joinable, playerData);
     } else {
       await _createBattle(playerData);
     }

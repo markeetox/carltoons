@@ -1090,3 +1090,111 @@ input { font-family: var(--font-body); }
   opacity: 0.7;
 }
 .nav-btn.nav-logout:hover { opacity: 1; color: var(--clr-red); }
+
+/* ════════════════════════════════════════════════════════════
+   TOP BAR — right group (streak + info button)
+   ════════════════════════════════════════════════════════════ */
+.top-bar-right {
+  display: flex; align-items: center; gap: 8px;
+}
+.btn-howto {
+  color: var(--clr-purple);
+  border-color: var(--clr-purple);
+  opacity: 0.7;
+}
+.btn-howto:hover { opacity: 1; }
+
+/* ════════════════════════════════════════════════════════════
+   HOW TO PLAY SCREEN
+   ════════════════════════════════════════════════════════════ */
+#screen-howto {
+  padding-bottom: 0;
+  overflow-y: auto;
+}
+.howto-content {
+  padding: var(--sp-md);
+  display: flex; flex-direction: column; gap: var(--sp-md);
+  padding-bottom: var(--sp-xl);
+}
+.howto-section {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-md);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.howto-section--warning {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+.howto-title {
+  font-family: var(--font-display);
+  font-size: 17px; letter-spacing: .04em;
+  color: var(--clr-text);
+  display: flex; align-items: center; gap: 8px;
+}
+.howto-title i { color: var(--clr-purple); }
+.howto-text {
+  font-size: 13px; color: var(--clr-text-dim);
+  line-height: 1.65;
+}
+.howto-text strong { color: var(--clr-text); }
+.howto-text--tip {
+  color: var(--clr-purple);
+  background: #f3e8ff;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  font-size: 12px;
+}
+
+/* Action list */
+.howto-actions {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.howto-action {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--clr-text-dim);
+}
+.howto-action strong { color: var(--clr-text); }
+.howto-action-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+
+/* Stats grid */
+.howto-stats { display: flex; flex-direction: column; gap: 6px; }
+.howto-stat {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 13px;
+}
+.hs-name {
+  font-family: var(--font-display);
+  font-size: 13px; color: var(--clr-purple);
+  min-width: 58px; flex-shrink: 0;
+}
+.hs-desc { color: var(--clr-text-dim); }
+
+/* RPS table */
+.howto-rps { display: flex; flex-direction: column; gap: 6px; }
+.howto-rps-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  font-size: 13px; font-weight: 600;
+}
+.howto-rps-row span:nth-child(2) {
+  font-size: 11px; color: var(--clr-text-muted);
+  font-weight: 400; font-style: italic;
+}
+
+/* Penalties */
+.howto-penalty { display: flex; flex-direction: column; gap: 6px; }
+.howto-penalty-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; color: var(--clr-text-dim);
+  padding: 6px 0; border-bottom: 1px solid var(--clr-border);
+}
+.howto-penalty-row:last-child { border-bottom: none; }
+.hp-days {
+  font-weight: 700; color: var(--clr-red);
+  min-width: 90px; flex-shrink: 0; font-size: 12px;
+}
