@@ -277,19 +277,24 @@ const App = (() => {
      Document path: players/{uid}
   ────────────────────────────────────────────────────────────── */
   async function _loadPlayer() {
-    const ref  = db.collection("players").doc(_user.uid);
-    const snap = await ref.get();
+    try {
+      const ref  = db.collection("players").doc(_user.uid);
+      const snap = await ref.get();
 
-    if (!snap.exists) {
-      // Brand new player — create document + assign egg
-      await _createNewPlayer(ref);
-    } else {
-      _userData = snap.data();
+      if (!snap.exists) {
+        // Brand new player — create document + assign egg
+        await _createNewPlayer(ref);
+      } else {
+        _userData = snap.data();
+      }
+
+      await _loadPigeon();
+      _recordDailyLogin();
+      _routeAfterLoad();
+    } catch (err) {
+      console.error("[App] Load player failed:", err);
+      showToast("Authentication error. Please refresh.");
     }
-
-    await _loadPigeon();
-    _recordDailyLogin();
-    _routeAfterLoad();
   }
 
   async function _createNewPlayer(ref) {
@@ -312,12 +317,16 @@ const App = (() => {
      Document path: pigeons/{uid}  (one pigeon per player for now)
   ────────────────────────────────────────────────────────────── */
   async function _loadPigeon() {
-    if (!_userData.hasPigeon) return;
-    const snap = await db.collection("pigeons").doc(_user.uid).get();
-    if (snap.exists) {
-      _pigeon = snap.data();
-      // Sync localStorage gates so refresh can never bypass them
-      _syncLocksFromFirestore(_user.uid, _pigeon);
+    try {
+      if (!_userData.hasPigeon) return;
+      const snap = await db.collection("pigeons").doc(_user.uid).get();
+      if (snap.exists) {
+        _pigeon = snap.data();
+        // Sync localStorage gates so refresh can never bypass them
+        _syncLocksFromFirestore(_user.uid, _pigeon);
+      }
+    } catch (err) {
+      console.error("[App] Load pigeon failed:", err);
     }
   }
 
@@ -325,28 +334,32 @@ const App = (() => {
      RECORD DAILY LOGIN
   ────────────────────────────────────────────────────────────── */
   async function _recordDailyLogin() {
-    const today = todayStr();
-    const dates = _userData.loginDates ?? [];
-    if (dates.includes(today)) return; // already counted
+    try {
+      const today = todayStr();
+      const dates = _userData.loginDates ?? [];
+      if (dates.includes(today)) return; // already counted
 
-    dates.push(today);
-    await db.collection("players").doc(_user.uid).update({
-      loginDates:  dates,
-      totalLogins: firebase.firestore.FieldValue.increment(1),
-    });
-    _userData.loginDates  = dates;
-    _userData.totalLogins = (_userData.totalLogins ?? 0) + 1;
+      dates.push(today);
+      await db.collection("players").doc(_user.uid).update({
+        loginDates:  dates,
+        totalLogins: firebase.firestore.FieldValue.increment(1),
+      });
+      _userData.loginDates  = dates;
+      _userData.totalLogins = (_userData.totalLogins ?? 0) + 1;
 
-    // Apply bond decay if pigeon exists and player missed yesterday
-    if (_pigeon) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yStr = yesterday.toISOString().slice(0, 10);
-      if (!dates.includes(yStr)) {
-        const newBond = Math.max(0, (_pigeon.bond ?? 50) - GAME_CONFIG.bondDecayPerDay);
-        await db.collection("pigeons").doc(_user.uid).update({ bond: newBond });
-        _pigeon.bond = newBond;
+      // Apply bond decay if pigeon exists and player missed yesterday
+      if (_pigeon) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yStr = yesterday.toISOString().slice(0, 10);
+        if (!dates.includes(yStr)) {
+          const newBond = Math.max(0, (_pigeon.bond ?? 50) - GAME_CONFIG.bondDecayPerDay);
+          await db.collection("pigeons").doc(_user.uid).update({ bond: newBond });
+          _pigeon.bond = newBond;
+        }
       }
+    } catch (err) {
+      console.error("[App] Record login failed:", err);
     }
   }
 
@@ -371,16 +384,6 @@ const App = (() => {
      EGG SCREEN
   ────────────────────────────────────────────────────────────── */
   function _renderEggScreen() {
-    // Set nest background safely — no 404 errors
-    ["nest-bg-egg","nest-bg-hatch"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const img = new Image();
-      img.onload = () => { el.style.backgroundImage = `url('/assets/egg/nest_bg.png')`; };
-      img.onerror = () => {}; // silently skip if not uploaded yet
-      img.src = "/assets/egg/nest_bg.png";
-    });
-
     const egg = _pigeon ?? {};  // might not exist yet, that's fine
     const actionLog   = egg.incubationLog ?? [];
     const daysDone    = actionLog.filter(Boolean).length;
@@ -624,15 +627,6 @@ const App = (() => {
     const streak = _calcStreak(_userData.loginDates ?? []);
     const streakEl = document.getElementById("home-streak");
     if (streakEl) streakEl.textContent = streak;
-
-    // Pigeon background — place art at /assets/bg/home_bg.png
-    const bgEl = document.getElementById("pigeon-bg");
-    if (bgEl) {
-      const bgImg = new Image();
-      bgImg.onload  = () => { bgEl.style.backgroundImage = "url('/assets/bg/home_bg.png')"; };
-      bgImg.onerror = () => { bgEl.style.backgroundImage = "url('/assets/egg/nest_bg.png')"; };
-      bgImg.src = "/assets/bg/home_bg.png";
-    }
 
     // Mood state
     const missedDays = _calcMissedDays(_userData.loginDates ?? []);

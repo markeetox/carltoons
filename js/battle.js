@@ -55,27 +55,33 @@ const Battle = (() => {
   ════════════════════════════════════════════════════════ */
 
   async function findMatch(playerData) {
-    _myUid      = playerData.uid;
-    _battleOver = false;
-    _rigBuilt   = false;
+    try {
+      _myUid      = playerData.uid;
+      _battleOver = false;
+      _rigBuilt   = false;
 
-    _setStatus("🔍 Searching for an opponent…");
+      _setStatus("🔍 Searching for an opponent…");
 
-    // Fetch waiting battles with a simple single-field query (no compound
-    // index needed). Filter out our own battle client-side.
-    const snap = await db.collection("battles")
-      .where("status", "==", "waiting")
-      .orderBy("createdAt")
-      .limit(10)
-      .get();
+      // Fetch waiting battles with a simple single-field query (no compound
+      // index needed). Filter out our own battle client-side.
+      const snap = await db.collection("battles")
+        .where("status", "==", "waiting")
+        .orderBy("createdAt")
+        .limit(10)
+        .get();
 
-    // Find first open battle that belongs to someone else
-    const joinable = snap.docs.find((d) => d.data().hostId !== _myUid);
+      // Find first open battle that belongs to someone else
+      const joinable = snap.docs.find((d) => d.data().hostId !== _myUid);
 
-    if (joinable) {
-      await _joinBattle(joinable, playerData);
-    } else {
-      await _createBattle(playerData);
+      if (joinable) {
+        await _joinBattle(joinable, playerData);
+      } else {
+        await _createBattle(playerData);
+      }
+    } catch (err) {
+      console.error("[Battle] Find match failed:", err);
+      _setStatus("❌ Matchmaking failed: " + (err.message || "Unknown error"));
+      showToast("Matchmaking error. Check permissions.");
     }
   }
 

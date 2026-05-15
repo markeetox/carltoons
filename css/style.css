@@ -401,10 +401,11 @@ input { font-family: var(--font-body); }
 }
 .nest-bg {
   position: absolute; inset: 0;
-  background-size: contain;
-  background-position: center bottom;
+  background-image: url('/assets/egg/nest_bg.png');
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
-  opacity: .35;          /* adjust once you have the real art */
+  opacity: 1;
   pointer-events: none;
 }
 .egg-wrap {
@@ -1091,10 +1092,11 @@ input { font-family: var(--font-body); }
 }
 .pigeon-bg {
   position: absolute; inset: 0;
+  background-image: url('/assets/bg/home_bg.png');
   background-size: cover;
   background-position: center;
   border-radius: var(--r-lg);
-  opacity: 0.18;       /* subtle — pigeon sits on top */
+  opacity: 1;
   pointer-events: none;
   /* Ensure background doesn't bleed outside card corners */
   overflow: hidden;
