@@ -87,6 +87,7 @@ input { font-family: var(--font-body); }
   -webkit-overflow-scrolling: touch;
   z-index: 1;
   box-shadow: 0 0 0 1px var(--clr-border);
+  background: var(--clr-surface);
 }
 .screen.active {
   opacity: 1; pointer-events: all;
@@ -392,6 +393,11 @@ input { font-family: var(--font-body); }
   padding: var(--sp-lg) var(--sp-md);
   position: relative;
   flex: 1;
+  background: #fff;
+  margin: 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .nest-bg {
   position: absolute; inset: 0;
@@ -444,8 +450,13 @@ input { font-family: var(--font-body); }
 
 /* Daily action cards */
 .daily-actions {
-  padding: 0 var(--sp-md) var(--sp-md);
+  padding: var(--sp-md);
   flex-shrink: 0;
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .daily-title {
   font-family: var(--font-display);
@@ -594,6 +605,11 @@ input { font-family: var(--font-body); }
   display: flex; flex-direction: column;
   align-items: center; padding: var(--sp-md);
   flex: 1; position: relative;
+  background: #fff;
+  margin: 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 /* Bond bar */
@@ -613,7 +629,14 @@ input { font-family: var(--font-body); }
 .bond-label { font-size: 12px; color: var(--clr-text-dim); min-width: 52px; }
 
 /* Care grid */
-.care-section { padding: 0 var(--sp-md) var(--sp-sm); }
+.care-section {
+  padding: var(--sp-md);
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
 .care-grid {
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-sm); margin-top: var(--sp-xs);
@@ -635,8 +658,13 @@ input { font-family: var(--font-body); }
 /* Quick stats strip */
 .quick-stats {
   display: flex; gap: var(--sp-sm);
-  padding: var(--sp-sm) var(--sp-md) var(--sp-md);
+  padding: var(--sp-md);
   overflow-x: auto; scrollbar-width: none;
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .quick-stats::-webkit-scrollbar { display: none; }
 .stat-chip {
@@ -662,10 +690,12 @@ input { font-family: var(--font-body); }
 .profile-sub { font-size: 13px; color: var(--clr-text-dim); }
 
 .stat-card {
-  margin: 0 var(--sp-md) var(--sp-md);
-  background: var(--clr-surface2); border: 1px solid var(--clr-border);
+  margin: 0 12px 12px;
+  background: #fff;
+  border: 1px solid var(--clr-border);
   border-radius: var(--r-lg); padding: var(--sp-md);
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .stat-card-row { display: flex; flex-direction: column; gap: 4px; }
 .stat-card-name {
@@ -682,7 +712,12 @@ input { font-family: var(--font-body); }
 
 /* Battle history */
 .battle-history, .login-history {
-  padding: 0 var(--sp-md) var(--sp-md);
+  padding: var(--sp-md);
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .battle-entry {
   display: flex; align-items: center; gap: 10px;
@@ -721,6 +756,11 @@ input { font-family: var(--font-body); }
   display: flex; align-items: flex-end; justify-content: center;
   gap: var(--sp-sm); padding: var(--sp-sm) var(--sp-md);
   flex: 1;
+  background: #fff;
+  margin: 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .arena-side {
   display: flex; flex-direction: column; align-items: center;
@@ -751,9 +791,11 @@ input { font-family: var(--font-body); }
   min-height: 60px; max-height: 80px;
   overflow-y: auto; scrollbar-width: none;
   padding: var(--sp-sm) var(--sp-md);
-  background: var(--clr-surface2);
-  border-top: 1px solid var(--clr-border);
-  border-bottom: 1px solid var(--clr-border);
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .battle-feed::-webkit-scrollbar { display: none; }
 .feed-entry {
@@ -767,7 +809,12 @@ input { font-family: var(--font-body); }
 /* Move picker */
 .move-picker {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-sm); padding: var(--sp-sm) var(--sp-md) var(--sp-md);
+  gap: var(--sp-sm); padding: var(--sp-md);
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .move-btn {
   display: flex; flex-direction: column; align-items: center;
@@ -798,7 +845,13 @@ input { font-family: var(--font-body); }
   letter-spacing: .05em; color: var(--clr-gold);
 }
 .matchmaking-sub { font-size: 14px; color: var(--clr-text-dim); text-align: center; }
-.leaderboard-preview { width: 100%; max-width: 320px; margin-top: var(--sp-sm); }
+.leaderboard-preview {
+  width: 100%; max-width: 320px; margin-top: var(--sp-sm);
+  background: var(--clr-surface);
+  padding: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--clr-border);
+}
 .lb-row {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 0; border-bottom: 1px solid var(--clr-border);
@@ -1043,6 +1096,8 @@ input { font-family: var(--font-body); }
   border-radius: var(--r-lg);
   opacity: 0.18;       /* subtle — pigeon sits on top */
   pointer-events: none;
+  /* Ensure background doesn't bleed outside card corners */
+  overflow: hidden;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -1117,11 +1172,12 @@ input { font-family: var(--font-body); }
   padding-bottom: var(--sp-xl);
 }
 .howto-section {
-  background: var(--clr-surface);
+  background: #fff;
   border: 1px solid var(--clr-border);
   border-radius: var(--r-lg);
   padding: var(--sp-md);
   display: flex; flex-direction: column; gap: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .howto-section--warning {
   border-color: #fca5a5;
