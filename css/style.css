@@ -203,14 +203,13 @@ input { font-family: var(--font-body); }
    at the same display size — the transparency does the work.
    Container is square; change --rig-size to resize everywhere.
    ════════════════════════════════════════════════════════════ */
-:root { --rig-size: 280px; }
+:root { --rig-size: 300px; }
 
 .pigeon-rig {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: var(--rig-size);
+  height: var(--rig-size);
   flex-shrink: 0;
-  /* overflow: hidden; */
 }
 .pigeon-rig .p-layer {
   position: absolute;
@@ -627,7 +626,8 @@ input { font-family: var(--font-body); }
    ════════════════════════════════════════════════════════════ */
 .pigeon-scene {
   display: flex; flex-direction: column;
-  align-items: center; padding: var(--sp-md);
+  align-items: center; justify-content: center;
+  padding: var(--sp-md);
   position: relative;
   aspect-ratio: 1 / 1;
   width: calc(100% - 24px);
@@ -717,10 +717,6 @@ input { font-family: var(--font-body); }
 .profile-pigeon-wrap {
   display: flex; flex-direction: column; align-items: center;
   padding: var(--sp-md);
-}
-.profile-pigeon-wrap .pigeon-rig {
-  width: 300px;
-  height: 300px;
 }
 .profile-name {
   font-family: var(--font-display);
