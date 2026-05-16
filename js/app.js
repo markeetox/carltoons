@@ -961,7 +961,14 @@ const App = (() => {
       });
     } catch (err) {
       console.error("[App] Leaderboard failed:", err);
-      el.innerHTML = `<p class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i> Leaderboard temporarily unavailable</p>`;
+      const isPermissionError = err.message?.includes("permissions") || err.code === "permission-denied";
+      el.innerHTML = `
+        <div class="empty-state" style="flex-direction:column;gap:8px;text-align:center">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>Leaderboard unavailable</span>
+          ${isPermissionError ? '<span style="font-size:11px;opacity:0.7">Missing Firestore permissions or indexes.</span>' : ''}
+        </div>
+      `;
     }
   }
 

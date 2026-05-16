@@ -237,23 +237,23 @@ input { font-family: var(--font-body); }
    Everything else gets its own subtle motion.
 ── */
 @keyframes torso-breathe {
-  0%, 100% { transform: translateY(0)     scaleY(1);    }
-  50%       { transform: translateY(-4px)  scaleY(1.02); }
+  0%, 100% { transform: translate(-50%, -50%) translateY(0)     scaleY(1);    }
+  50%       { transform: translate(-50%, -50%) translateY(-4px)  scaleY(1.02); }
 }
 @keyframes head-bob {
-  0%, 100% { transform: rotate(-2deg) translateY(0);    }
-  35%       { transform: rotate( 2deg) translateY(-3px); }
-  70%       { transform: rotate(-1deg) translateY(1px);  }
+  0%, 100% { transform: translate(-50%, -50%) rotate(-2deg) translateY(0);    }
+  35%       { transform: translate(-50%, -50%) rotate( 2deg) translateY(-3px); }
+  70%       { transform: translate(-50%, -50%) rotate(-1deg) translateY(1px);  }
 }
 @keyframes wing-drift {
-  0%, 100% { transform: rotate(0deg)   translateY(0);   }
-  40%       { transform: rotate(-2deg)  translateY(2px); }
-  80%       { transform: rotate( 1.5deg) translateY(1px);}
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg)   translateY(0);   }
+  40%       { transform: translate(-50%, -50%) rotate(-2deg)  translateY(2px); }
+  80%       { transform: translate(-50%, -50%) rotate( 1.5deg) translateY(1px);}
 }
 @keyframes tail-sway {
-  0%, 100% { transform: rotate(0deg)   translateY(0);   }
-  30%       { transform: rotate( 3deg)  translateY(1px); }
-  70%       { transform: rotate(-2deg)  translateY(2px); }
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg)   translateY(0);   }
+  30%       { transform: translate(-50%, -50%) rotate( 3deg)  translateY(1px); }
+  70%       { transform: translate(-50%, -50%) rotate(-2deg)  translateY(2px); }
 }
 
 /* Apply animations — legs intentionally excluded */
@@ -265,19 +265,19 @@ input { font-family: var(--font-body); }
 
 /* ── Attack (nod) ── */
 @keyframes attack-nod {
-  0%   { transform: rotate(0deg);   }
-  25%  { transform: rotate(-28deg) translateY(4px); }
-  55%  { transform: rotate( 6deg);  }
-  100% { transform: rotate(0deg);   }
+  0%   { transform: translate(-50%, -50%) rotate(0deg);   }
+  25%  { transform: translate(-50%, -50%) rotate(-28deg) translateY(4px); }
+  55%  { transform: translate(-50%, -50%) rotate( 6deg);  }
+  100% { transform: translate(-50%, -50%) rotate(0deg);   }
 }
 .pigeon-rig.attacking .p-layer.head { animation: attack-nod .45s ease-in-out forwards; }
 
 /* ── Take damage (crouch) ── */
 @keyframes take-damage {
-  0%   { transform: translateY(0)    scaleY(1);   }
-  20%  { transform: translateY(14px) scaleY(.78); }
-  60%  { transform: translateY(5px)  scaleY(.92); }
-  100% { transform: translateY(0)    scaleY(1);   }
+  0%   { transform: translate(-50%, -50%) translateY(0)    scaleY(1);   }
+  20%  { transform: translate(-50%, -50%) translateY(14px) scaleY(.78); }
+  60%  { transform: translate(-50%, -50%) translateY(5px)  scaleY(.92); }
+  100% { transform: translate(-50%, -50%) translateY(0)    scaleY(1);   }
 }
 .pigeon-rig.hurt .p-layer.torso,
 .pigeon-rig.hurt .p-layer.head,
@@ -296,19 +296,19 @@ input { font-family: var(--font-body); }
 
 /* ── KO faint ── */
 @keyframes faint {
-  0%   { transform: rotate(0deg)   translateY(0)    opacity(1); }
-  60%  { transform: rotate(85deg)  translateY(20px); opacity: .5; }
-  100% { transform: rotate(90deg)  translateY(40px); opacity: 0; }
+  0%   { transform: translate(-50%, -50%) rotate(0deg)   translateY(0)    opacity(1); }
+  60%  { transform: translate(-50%, -50%) rotate(85deg)  translateY(20px); opacity: .5; }
+  100% { transform: translate(-50%, -50%) rotate(90deg)  translateY(40px); opacity: 0; }
 }
 .pigeon-rig.ko { animation: faint .7s ease-in forwards; }
 
 /* ── Victory bounce ── */
 @keyframes victory-hop {
-  0%, 100% { transform: translateY(0)     scaleY(1);    }
-  20%       { transform: translateY(-22px) scaleY(1.05); }
-  40%       { transform: translateY(0)     scaleY(.9);   }
-  60%       { transform: translateY(-14px) scaleY(1.03); }
-  80%       { transform: translateY(0)     scaleY(.95);  }
+  0%, 100% { transform: translate(-50%, -50%) translateY(0)     scaleY(1);    }
+  20%       { transform: translate(-50%, -50%) translateY(-22px) scaleY(1.05); }
+  40%       { transform: translate(-50%, -50%) translateY(0)     scaleY(.9);   }
+  60%       { transform: translate(-50%, -50%) translateY(-14px) scaleY(1.03); }
+  80%       { transform: translate(-50%, -50%) translateY(0)     scaleY(.95);  }
 }
 .pigeon-rig.victory { animation: victory-hop .9s ease-in-out; }
 
@@ -682,25 +682,34 @@ input { font-family: var(--font-body); }
 .care-card:hover, .care-card:active { border-color: var(--clr-gold); color: var(--clr-gold); transform: scale(.97); }
 .care-card.done { opacity: .35; pointer-events: none; }
 
-/* Quick stats strip */
+/* Quick stats Bento Box */
 .quick-stats {
-  display: flex; gap: var(--sp-sm);
+  display: flex; flex-direction: column; gap: var(--sp-sm);
   padding: var(--sp-md);
-  overflow-x: auto; scrollbar-width: none;
   background: var(--clr-bg);
   margin: 0 12px 12px;
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
-.quick-stats::-webkit-scrollbar { display: none; }
-.stat-chip {
-  display: flex; flex-direction: column; align-items: center;
-  background: var(--clr-surface2); border: 1px solid var(--clr-border);
-  border-radius: var(--r-md); padding: 10px 14px; flex-shrink: 0;
+.stat-row {
+  display: grid;
+  gap: var(--sp-sm);
 }
-.stat-chip-name { font-family: var(--font-display); font-size: 14px; color: var(--clr-gold); }
-.stat-chip-val  { font-size: 11px; color: var(--clr-text-dim); margin-top: 2px; }
+.stat-row-4 { grid-template-columns: repeat(4, 1fr); }
+.stat-row-2 { grid-template-columns: repeat(2, 1fr); }
+
+.stat-chip {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--clr-surface2); border: 1px solid var(--clr-border);
+  border-radius: var(--r-md); padding: 8px 6px;
+}
+.stat-chip-name { font-family: var(--font-display); font-size: 12px; color: var(--clr-gold); }
+.stat-chip-val  { font-size: 13px; font-weight: 700; color: var(--clr-text); }
+
+@media (max-width: 400px) {
+  .stat-row-4 { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* ════════════════════════════════════════════════════════════
    PROFILE SCREEN
@@ -708,6 +717,10 @@ input { font-family: var(--font-body); }
 .profile-pigeon-wrap {
   display: flex; flex-direction: column; align-items: center;
   padding: var(--sp-md);
+}
+.profile-pigeon-wrap .pigeon-rig {
+  width: 300px;
+  height: 300px;
 }
 .profile-name {
   font-family: var(--font-display);
@@ -1158,8 +1171,8 @@ input { font-family: var(--font-body); }
   90%      { transform: translate(-1px,2px) rotate(-1deg);  }
 }
 @keyframes feral-eye {
-  0%,90%,100% { transform: scaleY(1); }
-  95%          { transform: scaleY(0.05); }  /* rapid angry blink */
+  0%,90%,100% { transform: translate(-50%, -50%) scaleY(1); }
+  95%          { transform: translate(-50%, -50%) scaleY(0.05); }  /* rapid angry blink */
 }
 
 .pigeon-rig.feral {

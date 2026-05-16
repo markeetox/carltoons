@@ -183,15 +183,32 @@ function renderStatChips(containerId, stats) {
   const el = document.getElementById(containerId);
   if (!el) return;
   el.innerHTML = "";
-  ["yolo","fomo","hodl","fud","ngmi","wagmi"].forEach((name) => {
-    const chip = document.createElement("div");
-    chip.className = "stat-chip";
-    chip.innerHTML = `
-      <span class="stat-chip-name">${name.toUpperCase()}</span>
-      <span class="stat-chip-val">${stats[name] ?? 0}</span>
+
+  // Row 1: YOLO, FOMO, HODL, FUD
+  const row1 = document.createElement("div");
+  row1.className = "stat-row stat-row-4";
+  ["yolo","fomo","hodl","fud"].forEach(name => {
+    row1.innerHTML += `
+      <div class="stat-chip">
+        <span class="stat-chip-name">${name.toUpperCase()}</span>
+        <span class="stat-chip-val">${stats[name] ?? 0}</span>
+      </div>
     `;
-    el.appendChild(chip);
   });
+  el.appendChild(row1);
+
+  // Row 2: WAGMI, NGMI
+  const row2 = document.createElement("div");
+  row2.className = "stat-row stat-row-2";
+  ["wagmi","ngmi"].forEach(name => {
+    row2.innerHTML += `
+      <div class="stat-chip">
+        <span class="stat-chip-name">${name.toUpperCase()}</span>
+        <span class="stat-chip-val">${stats[name] ?? 0}</span>
+      </div>
+    `;
+  });
+  el.appendChild(row2);
 }
 
 function renderFullStatCard(containerId, stats) {

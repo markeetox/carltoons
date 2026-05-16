@@ -80,8 +80,9 @@ const Battle = (() => {
       }
     } catch (err) {
       console.error("[Battle] Find match failed:", err);
+      const isPermissionError = err.message?.includes("permissions") || err.code === "permission-denied";
       _setStatus("❌ Matchmaking failed: " + (err.message || "Unknown error"));
-      showToast("Matchmaking error. Check permissions.");
+      showToast(isPermissionError ? "Firebase permission error. Check Firestore rules/indexes." : "Matchmaking error.");
     }
   }
 
