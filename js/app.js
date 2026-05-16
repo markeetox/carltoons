@@ -908,9 +908,11 @@ const App = (() => {
       btn.addEventListener("click", () => {
         const screen = btn.dataset.screen;
         if (screen === "battle") {
-          // Re-show matchmaking when navigating to battle tab
-          document.getElementById("matchmaking")?.classList.remove("hidden");
-          _renderLeaderboard();
+          // Only show matchmaking if NOT currently in a battle
+          if (!Battle.isInBattle()) {
+            document.getElementById("matchmaking")?.classList.remove("hidden");
+            _renderLeaderboard();
+          }
         }
         if (screen === "profile") _renderProfileScreen();
         showScreen(screen);
