@@ -636,7 +636,6 @@ input { font-family: var(--font-body); }
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  overflow: hidden;
 }
 
 /* Bond bar */
