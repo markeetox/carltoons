@@ -48,6 +48,7 @@ const Battle = (() => {
   let _moveSubmitted = false;
   let _battleOver    = false;
   let _rigBuilt      = false;
+  let _matchFoundShown = false;
   let _timeoutTimer  = null;
 
   /* ════════════════════════════════════════════════════════
@@ -59,6 +60,7 @@ const Battle = (() => {
       _myUid      = playerData.uid;
       _battleOver = false;
       _rigBuilt   = false;
+      _matchFoundShown = false;
 
       _setStatus("🔍 Searching for an opponent…");
 
@@ -159,6 +161,11 @@ const Battle = (() => {
       _battleOver = true;
       _renderBattleUI(d);
       _onBattleEnd(d);
+      return;
+    }
+
+    if (d.status === "active" && !_matchFoundShown) {
+      _showMatchFound(d);
       return;
     }
 
@@ -285,8 +292,27 @@ const Battle = (() => {
      UI
   ════════════════════════════════════════════════════════ */
 
+  function _showMatchFound(d) {
+    _matchFoundShown = true;
+    const isHost = _myRole === "host";
+    const opPigeon = isHost ? d.guestPigeon : d.hostPigeon;
+    if (!opPigeon) return;
+
+    document.getElementById("mf-opponent-name").textContent = opPigeon.name;
+    buildPigeonRig(document.getElementById("mf-opponent-rig"), opPigeon.traits, { idle: true, mirrored: true });
+
+    const overlay = document.getElementById("match-found-overlay");
+    overlay.classList.remove("hidden");
+
+    document.getElementById("btn-lets-coo").onclick = () => {
+      overlay.classList.add("hidden");
+      _renderBattleUI(d);
+    };
+  }
+
   function _renderBattleUI(d) {
     document.getElementById("matchmaking")?.classList.add("hidden");
+    document.getElementById("match-found-overlay")?.classList.add("hidden");
     document.getElementById("move-picker")?.classList.remove("hidden");
 
     const isHost   = _myRole === "host";
@@ -469,6 +495,8 @@ const Battle = (() => {
     _moveSubmitted = false;
     _battleOver    = false;
     _rigBuilt      = false;
+    _matchFoundShown = false;
+    document.getElementById("match-found-overlay")?.classList.add("hidden");
   }
 
   /* ════════════════════════════════════════════════════════
@@ -504,6 +532,10 @@ const Battle = (() => {
      PUBLIC INIT
   ════════════════════════════════════════════════════════ */
 
+  function isInBattle() {
+    return _battleRef && !_battleOver;
+  }
+
   function init() {
     document.querySelectorAll(".move-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -522,5 +554,5 @@ const Battle = (() => {
     });
   }
 
-  return { init, findMatch, cancelMatchmaking };
+  return { init, findMatch, cancelMatchmaking, isInBattle };
 })();
