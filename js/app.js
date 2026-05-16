@@ -927,10 +927,19 @@ const App = (() => {
     el.innerHTML = `<p class="empty-state">Loading leaderboard…</p>`;
 
     try {
-      const snap = await db.collection("players")
-        .orderBy("elo", "desc")
-        .limit(5)
-        .get();
+      // If ordering by ELO fails (e.g. permission or index), try simple list
+      let snap;
+      try {
+        snap = await db.collection("players")
+          .orderBy("elo", "desc")
+          .limit(5)
+          .get();
+      } catch (err) {
+        console.warn("[App] ELO-sorted leaderboard failed, falling back to basic list:", err);
+        snap = await db.collection("players")
+          .limit(5)
+          .get();
+      }
 
       el.innerHTML = "";
 
