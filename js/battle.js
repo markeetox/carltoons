@@ -189,10 +189,17 @@ const Battle = (() => {
     _setPickerWaiting(true);
 
     const field = _myRole === "host" ? "hostMove" : "guestMove";
-    await _battleRef.update({
-      [field]:      move,
-      lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-    });
+    try {
+      await _battleRef.update({
+        [field]:      move,
+        lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("[Battle] Submit move failed:", err);
+      showToast("Failed to submit move. Check permissions.");
+      _moveSubmitted = false;
+      _setPickerWaiting(false);
+    }
   }
 
   /* ════════════════════════════════════════════════════════
@@ -398,12 +405,16 @@ const Battle = (() => {
 
     _setPickerWaiting(true);
 
-    await App.recordBattleResult({
-      won:      iWon,
-      opponent: (isHost ? d.guestPigeon?.name : d.hostPigeon?.name) ?? "Unknown",
-      rounds:   (d.round ?? 1) - 1,
-      eloDelta: iWon ? 25 : -20,
-    });
+    try {
+      await App.recordBattleResult({
+        won:      iWon,
+        opponent: (isHost ? d.guestPigeon?.name : d.hostPigeon?.name) ?? "Unknown",
+        rounds:   (d.round ?? 1) - 1,
+        eloDelta: iWon ? 25 : -20,
+      });
+    } catch (err) {
+      console.error("[Battle] Record battle result failed:", err);
+    }
 
     // Soft-delete the battle doc after 30s (keeps it readable for both)
     setTimeout(async () => {

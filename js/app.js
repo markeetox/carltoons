@@ -309,7 +309,12 @@ const App = (() => {
       hasPigeon:    false,
       pigeonId:     null,
     };
-    await ref.set(_userData);
+    try {
+      await ref.set(_userData);
+    } catch (err) {
+      console.error("[App] Create player failed:", err);
+      showToast("Failed to create profile. Check connection.");
+    }
   }
 
   /* ──────────────────────────────────────────────────────────
@@ -318,7 +323,7 @@ const App = (() => {
   ────────────────────────────────────────────────────────────── */
   async function _loadPigeon() {
     try {
-      if (!_userData.hasPigeon) return;
+      // Even if hasPigeon is false, they might have an unhatched egg (incubation progress)
       const snap = await db.collection("pigeons").doc(_user.uid).get();
       if (snap.exists) {
         _pigeon = snap.data();
@@ -327,6 +332,8 @@ const App = (() => {
       }
     } catch (err) {
       console.error("[App] Load pigeon failed:", err);
+      // No toast here as it's a silent background load,
+      // but Step 2 will add more robust error handling.
     }
   }
 
@@ -396,10 +403,15 @@ const App = (() => {
     // Egg image state
     const eggImg = document.getElementById("egg-img");
     if (eggImg) {
-      // For eggDays=3: crack1 at 1 day done, crack2 at 2 days done
-      const crack2 = Math.floor(GAME_CONFIG.eggDays * 0.67);
-      const crack1 = Math.floor(GAME_CONFIG.eggDays * 0.34);
-      const eggState = daysDone >= crack2 ? "egg_crack2" : daysDone >= crack1 ? "egg_crack1" : "egg_whole";
+      // For eggDays=3:
+      // 0 done -> whole
+      // 1 done -> crack1
+      // 2 done -> crack2
+      // 3 done -> (hatches)
+      let eggState = "egg_whole";
+      if (daysDone === 1) eggState = "egg_crack1";
+      if (daysDone >= 2) eggState = "egg_crack2";
+
       eggImg.src = PIGEON_CONFIG.eggPath(eggState);
       eggImg.onerror = () => {
         eggImg.onerror = null;
@@ -485,41 +497,49 @@ const App = (() => {
       if (action === "shake") setTimeout(() => wrap.classList.remove(animClass), 700);
     }
 
-    // Re-fetch pigeon doc to get latest incubation log
-    const pigeonRef  = db.collection("pigeons").doc(_user.uid);
-    const pigeonSnap = await pigeonRef.get();
+    try {
+      // Re-fetch pigeon doc to get latest incubation log
+      const pigeonRef  = db.collection("pigeons").doc(_user.uid);
+      const pigeonSnap = await pigeonRef.get();
 
-    // Double-check Firestore — belt and suspenders
-    if (pigeonSnap.exists && pigeonSnap.data().lastActionDate === today) {
-      showToast("Already done today — come back tomorrow!");
-      _pigeon = pigeonSnap.data();
-      _renderEggScreen();
-      return;
-    }
+      // Double-check Firestore — belt and suspenders
+      if (pigeonSnap.exists && pigeonSnap.data().lastActionDate === today) {
+        showToast("Already done today — come back tomorrow!");
+        _pigeon = pigeonSnap.data();
+        _renderEggScreen();
+        return;
+      }
 
-    const incubationLog = pigeonSnap.exists
-      ? (pigeonSnap.data().incubationLog ?? [])
-      : [];
+      const incubationLog = pigeonSnap.exists
+        ? (pigeonSnap.data().incubationLog ?? [])
+        : [];
 
-    incubationLog.push(action);
+      incubationLog.push(action);
 
-    const pigeonData = {
-      uid:            _user.uid,
-      incubationLog,
-      lastActionDate: today,
-      hatched:        false,
-    };
+      const pigeonData = {
+        uid:            _user.uid,
+        incubationLog,
+        lastActionDate: today,
+        hatched:        false,
+      };
 
-    if (pigeonSnap.exists) await pigeonRef.update(pigeonData);
-    else await pigeonRef.set(pigeonData);
+      if (pigeonSnap.exists) await pigeonRef.update(pigeonData);
+      else await pigeonRef.set(pigeonData);
 
-    _pigeon = pigeonData;
-    showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} done! Come back tomorrow.`);
+      _pigeon = pigeonData;
+      showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} done! Come back tomorrow.`);
 
-    const daysDone = incubationLog.filter(Boolean).length;
-    if (daysDone >= GAME_CONFIG.eggDays) {
-      setTimeout(_triggerHatch, 1000);
-    } else {
+      const daysDone = incubationLog.filter(Boolean).length;
+      if (daysDone >= GAME_CONFIG.eggDays) {
+        setTimeout(_triggerHatch, 1000);
+      } else {
+        _renderEggScreen();
+      }
+    } catch (err) {
+      console.error("[App] Egg action failed:", err);
+      showToast("Action failed. Check Firestore permissions.");
+      // Unlock so they can try again
+      localStorage.removeItem(`pigeons_${_user.uid}_egg`);
       _renderEggScreen();
     }
   }
@@ -553,14 +573,19 @@ const App = (() => {
       lastTrained:   null,
     };
 
-    await db.collection("pigeons").doc(_user.uid).set(pigeonData);
-    await db.collection("players").doc(_user.uid).update({ hasPigeon: true, pigeonId: _user.uid });
+    try {
+      await db.collection("pigeons").doc(_user.uid).set(pigeonData);
+      await db.collection("players").doc(_user.uid).update({ hasPigeon: true, pigeonId: _user.uid });
 
-    _pigeon = pigeonData;
-    _userData.hasPigeon = true;
+      _pigeon = pigeonData;
+      _userData.hasPigeon = true;
 
-    _renderHomeScreen();
-    _renderProfileScreen();
+      _renderHomeScreen();
+      _renderProfileScreen();
+    } catch (err) {
+      console.error("[App] Save pigeon failed:", err);
+      showToast("Failed to hatch pigeon. Check permissions.");
+    }
   }
 
   /* ──────────────────────────────────────────────────────────
@@ -718,44 +743,51 @@ const App = (() => {
     // Lock immediately before any async work
     _lockAction(_user.uid, careType);
 
-    // Double-check Firestore
-    const snap = await db.collection("pigeons").doc(_user.uid).get();
-    if (snap.exists && snap.data()[field] === today) {
-      showToast("Already done today — come back tomorrow!");
-      _pigeon = snap.data();
+    try {
+      // Double-check Firestore
+      const snap = await db.collection("pigeons").doc(_user.uid).get();
+      if (snap.exists && snap.data()[field] === today) {
+        showToast("Already done today — come back tomorrow!");
+        _pigeon = snap.data();
+        _renderHomeScreen();
+        return;
+      }
+
+      const bondGain = GAME_CONFIG[`bondGain${careType.charAt(0).toUpperCase() + careType.slice(1)}`] ?? 5;
+      const newBond  = Math.min(GAME_CONFIG.bondMax, (_pigeon.bond ?? 50) + bondGain);
+
+      let statUpdates = {};
+      if (careType === "train") {
+        const weakest = _weakestStat(_pigeon.stats);
+        statUpdates[`stats.${weakest}`] = Math.min(
+          GAME_CONFIG.statMax,
+          (_pigeon.stats[weakest] ?? 0) + 3
+        );
+      }
+
+      await db.collection("pigeons").doc(_user.uid).update({
+        [field]: today,
+        bond:    newBond,
+        ...statUpdates,
+      });
+
+      _pigeon[field] = today;
+      _pigeon.bond   = newBond;
+      if (careType === "train") {
+        const w = _weakestStat(_pigeon.stats);
+        _pigeon.stats[w] = Math.min(GAME_CONFIG.statMax, (_pigeon.stats[w] ?? 0) + 3);
+      }
+
+      const LABELS = { food: "🍞 Fed! Come back tomorrow.", play: "🎮 Played! See you tomorrow.", train: "🏋️ Trained! Rest up." };
+      showToast(LABELS[careType]);
       _renderHomeScreen();
-      return;
+      triggerAnimation(document.getElementById("home-rig"), "victory", 900);
+    } catch (err) {
+      console.error("[App] Care action failed:", err);
+      showToast("Action failed. Check Firestore permissions.");
+      localStorage.removeItem(`pigeons_${_user.uid}_${careType}`);
+      _renderHomeScreen();
     }
-
-    const bondGain = GAME_CONFIG[`bondGain${careType.charAt(0).toUpperCase() + careType.slice(1)}`] ?? 5;
-    const newBond  = Math.min(GAME_CONFIG.bondMax, (_pigeon.bond ?? 50) + bondGain);
-
-    let statUpdates = {};
-    if (careType === "train") {
-      const weakest = _weakestStat(_pigeon.stats);
-      statUpdates[`stats.${weakest}`] = Math.min(
-        GAME_CONFIG.statMax,
-        (_pigeon.stats[weakest] ?? 0) + 3
-      );
-    }
-
-    await db.collection("pigeons").doc(_user.uid).update({
-      [field]: today,
-      bond:    newBond,
-      ...statUpdates,
-    });
-
-    _pigeon[field] = today;
-    _pigeon.bond   = newBond;
-    if (careType === "train") {
-      const w = _weakestStat(_pigeon.stats);
-      _pigeon.stats[w] = Math.min(GAME_CONFIG.statMax, (_pigeon.stats[w] ?? 0) + 3);
-    }
-
-    const LABELS = { food: "🍞 Fed! Come back tomorrow.", play: "🎮 Played! See you tomorrow.", train: "🏋️ Trained! Rest up." };
-    showToast(LABELS[careType]);
-    _renderHomeScreen();
-    triggerAnimation(document.getElementById("home-rig"), "victory", 900);
   }
 
   function _weakestStat(stats) {
@@ -851,16 +883,21 @@ const App = (() => {
     const newLog = [...(_userData.battleLog ?? []), entry];
     const newElo = Math.max(0, (_userData.elo ?? GAME_CONFIG.eloDefault) + eloDelta);
 
-    await db.collection("players").doc(_user.uid).update({
-      battleLog: newLog,
-      elo:       newElo,
-    });
+    try {
+      await db.collection("players").doc(_user.uid).update({
+        battleLog: newLog,
+        elo:       newElo,
+      });
 
-    _userData.battleLog = newLog;
-    _userData.elo       = newElo;
+      _userData.battleLog = newLog;
+      _userData.elo       = newElo;
 
-    const eloEl = document.getElementById("player-elo"); if (eloEl) eloEl.textContent = newElo;
-    _renderProfileScreen();
+      const eloEl = document.getElementById("player-elo"); if (eloEl) eloEl.textContent = newElo;
+      _renderProfileScreen();
+    } catch (err) {
+      console.error("[App] Record battle result failed:", err);
+      // Don't toast here as it might be redundant with battle screen feedback
+    }
   }
 
   /* ──────────────────────────────────────────────────────────
@@ -979,11 +1016,15 @@ const App = (() => {
     updates.bond = bond;
     updates.rehabDay = rehabDay;
 
-    await db.collection("pigeons").doc(_user.uid).update(updates);
-    _pigeon.bond    = bond;
-    _pigeon.stats   = stats;
-    _pigeon.rehabDay = rehabDay;
-    if (updates.feralSince) _pigeon.feralSince = updates.feralSince;
+    try {
+      await db.collection("pigeons").doc(_user.uid).update(updates);
+      _pigeon.bond    = bond;
+      _pigeon.stats   = stats;
+      _pigeon.rehabDay = rehabDay;
+      if (updates.feralSince) _pigeon.feralSince = updates.feralSince;
+    } catch (err) {
+      console.error("[App] Apply penalties failed:", err);
+    }
   }
 
   async function _checkRehab() {
@@ -1009,7 +1050,11 @@ const App = (() => {
       showToast(`🩹 Rehab day ${rehabDay}/3 — keep coming back!`);
     }
 
-    await db.collection("pigeons").doc(_user.uid).update(updates);
+    try {
+      await db.collection("pigeons").doc(_user.uid).update(updates);
+    } catch (err) {
+      console.error("[App] Check rehab failed:", err);
+    }
   }
 
   function _calcStreak(loginDates) {
