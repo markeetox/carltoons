@@ -4,67 +4,58 @@ A responsive Progressive Web App (PWA) Pigeon Tamagotchi game with real-time mul
 
 ## Firebase Setup Instructions
 
-To make the game fully functional (especially the Leaderboard and Battles), you must configure your Firebase project with the following rules and indexes.
+To make the game fully functional (especially the Leaderboard and Battles), you must configure your Firebase project with **Realtime Database**.
 
-### 1. Firestore Security Rules
+### 1. Realtime Database Security Rules
 
-Copy and paste these into your **Firestore > Rules** tab. These rules ensure that players can only modify their own data and that battles are handled safely.
+Copy and paste these into your **Realtime Database > Rules** tab. These rules ensure that players can only modify their own data and that battles are handled safely.
 
-```javascript
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // Players can read any profile (for leaderboard/battle), but only write their own
-    match /players/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Pigeons are tied to userIds
-    match /pigeons/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Battles require more complex logic
-    match /battles/{battleId} {
-      allow read: if request.auth != null;
-
-      // Allow creating a battle if the hostId matches the authenticated user
-      allow create: if request.auth != null && request.resource.data.hostId == request.auth.uid;
-
-      // Allow joining/updating a battle if you are the host or the guest
-      allow update: if request.auth != null && (
-        resource.data.hostId == request.auth.uid ||
-        resource.data.guestId == request.auth.uid ||
-        resource.data.guestId == null // allow joining
-      );
-
-      allow delete: if request.auth != null && resource.data.hostId == request.auth.uid;
+```json
+{
+  "rules": {
+    "players": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "pigeons": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "battles": {
+      ".read": "auth != null",
+      "$battleId": {
+        ".write": "auth != null && (!data.exists() || data.child('hostId').val() == auth.uid || data.child('guestId').val() == auth.uid || !data.child('guestId').exists())"
+      }
     }
   }
 }
 ```
 
-### 2. Firestore Composite Indexes
+### 2. Indexes
 
-Firestore requires indexes for queries that use `where` and `orderBy` together. You need to create these in the **Firestore > Indexes** tab:
+Realtime Database handles most indexing automatically for the queries used in this app. However, ensure that `elo` is indexed for the leaderboard by adding it to your rules:
 
-| Collection | Fields to Index |
-| :--- | :--- |
-| **players** | `elo` (Descending), `__name__` (Ascending) |
-| **battles** | `status` (Ascending), `createdAt` (Ascending) |
-
-**Note:** If the app says "Leaderboard unavailable", it usually means the `players` index for ELO is still being built or was not created.
+```json
+{
+  "rules": {
+    "players": {
+      ".indexOn": ["elo"],
+      ...
+    }
+  }
+}
+```
 
 ---
 
 ## Key Features
 - **Deterministic Traits:** Every pigeon is unique based on the user's ID.
 - **Bento Box UI:** A modern, card-based layout designed for mobile responsiveness.
-- **Real-time Battles:** Multiplayer using Firestore as a message bus.
+- **Real-time Battles:** Multiplayer using Firebase Realtime Database for instant state synchronization.
 - **Incubation System:** 3-day egg hatching cycle with stat-influencing actions.
 
 ## Development

@@ -64,16 +64,10 @@ const Battle = (() => {
 
       _setStatus("🔍 Searching for an opponent…");
 
-      // Fetch waiting battles with a simple single-field query (no compound
-      // index needed). Filter out our own battle client-side.
-      const snap = await db.collection("battles")
-        .where("status", "==", "waiting")
-        .orderBy("createdAt")
-        .limit(10)
-        .get();
+      const waiting = await DB.getWaitingBattles();
 
       // Find first open battle that belongs to someone else
-      const joinable = snap.docs.find((d) => d.data().hostId !== _myUid);
+      const joinable = waiting.find((b) => b.hostId !== _myUid);
 
       if (joinable) {
         await _joinBattle(joinable, playerData);
@@ -93,7 +87,7 @@ const Battle = (() => {
     _setStatus("🕊️ Waiting for a challenger…");
 
     const maxHP = _maxHP(playerData.stats);
-    _battleRef  = await db.collection("battles").add({
+    _battleRef  = await DB.createBattle({
       status:       "waiting",
       hostId:       playerData.uid,
       guestId:      null,
@@ -109,18 +103,21 @@ const Battle = (() => {
       roundLog:     [],
       fullLog:      ["⚔️ Battle room open. Waiting for challenger…"],
       winnerId:     null,
-      createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
-      lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:    Date.now(),
+      lastActivity: Date.now(),
     });
 
     _listenToBattle();
   }
 
-  async function _joinBattle(doc, playerData) {
+  async function _joinBattle(battleData, playerData) {
     _myRole    = "guest";
-    _battleRef = doc.ref;
+    _battleRef = db.ref('battles/' + battleData.id);
 
     const maxHP = _maxHP(playerData.stats);
+
+    const fullLog = (battleData.fullLog || []);
+    fullLog.push(`🐦 ${playerData.name} accepted the challenge! Battle starts now.`);
 
     await _battleRef.update({
       status:       "active",
@@ -128,10 +125,8 @@ const Battle = (() => {
       guestPigeon:  _pigeonPayload(playerData),
       guestHP:      maxHP,
       guestMaxHP:   maxHP,
-      fullLog:      firebase.firestore.FieldValue.arrayUnion(
-                      `🐦 ${playerData.name} accepted the challenge! Battle starts now.`
-                    ),
-      lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
+      fullLog:      fullLog,
+      lastActivity: Date.now(),
     });
 
     _listenToBattle();
@@ -143,9 +138,9 @@ const Battle = (() => {
 
   function _listenToBattle() {
     if (_unsubscribe) _unsubscribe();
-    _unsubscribe = _battleRef.onSnapshot((snap) => {
-      if (!snap.exists) return;
-      _onUpdate(snap.data());
+    _unsubscribe = _battleRef.on('value', (snap) => {
+      if (!snap.exists()) return;
+      _onUpdate(snap.val());
     });
   }
 
@@ -200,7 +195,7 @@ const Battle = (() => {
     try {
       await _battleRef.update({
         [field]:      move,
-        lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
+        lastActivity: Date.now(),
       });
     } catch (err) {
       console.error("[Battle] Submit move failed:", err);
@@ -216,14 +211,11 @@ const Battle = (() => {
 
   async function _resolveRound() {
     try {
-      await db.runTransaction(async (tx) => {
-        const snap = await tx.get(_battleRef);
-        const d    = snap.data();
-
-        if (d.status !== "active" || !d.hostMove || !d.guestMove) return;
+      await _battleRef.transaction((d) => {
+        if (!d || d.status !== "active" || !d.hostMove || !d.guestMove) return d;
 
         // Lock immediately
-        tx.update(_battleRef, { status: "resolving" });
+        d.status = "resolving";
 
         const hMove = d.hostMove;
         const gMove = d.guestMove;
@@ -268,18 +260,21 @@ const Battle = (() => {
           log.push(`🏆 ${winnerName} wins the Tooniseum battle!`);
         }
 
-        tx.update(_battleRef, {
-          status:       over ? "done" : "active",
-          round:        d.round + 1,
-          hostHP:       newHostHP,
-          guestHP:      newGuestHP,
-          hostMove:     null,
-          guestMove:    null,
-          roundLog:     log,
-          fullLog:      firebase.firestore.FieldValue.arrayUnion(...log),
-          winnerId,
-          lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-        });
+        const fullLog = (d.fullLog || []);
+        log.forEach(l => fullLog.push(l));
+
+        d.status = over ? "done" : "active";
+        d.round = (d.round || 1) + 1;
+        d.hostHP = newHostHP;
+        d.guestHP = newGuestHP;
+        d.hostMove = null;
+        d.guestMove = null;
+        d.roundLog = log;
+        d.fullLog = fullLog;
+        d.winnerId = winnerId;
+        d.lastActivity = Date.now();
+
+        return d;
       });
     } catch (err) {
       console.error("[battle] Transaction failed:", err);
@@ -412,7 +407,7 @@ const Battle = (() => {
   ════════════════════════════════════════════════════════ */
 
   async function _onBattleEnd(d) {
-    if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+    if (_unsubscribe) { _battleRef.off('value', _unsubscribe); _unsubscribe = null; }
     if (_timeoutTimer) { clearInterval(_timeoutTimer); _timeoutTimer = null; }
 
     const isHost = _myRole === "host";
@@ -460,18 +455,20 @@ const Battle = (() => {
 
     _timeoutTimer = setInterval(async () => {
       if (_battleOver) { clearInterval(_timeoutTimer); return; }
-      const snap = await _battleRef.get();
-      if (!snap.exists) { clearInterval(_timeoutTimer); return; }
-      const data = snap.data();
+      const snap = await _battleRef.once('value');
+      if (!snap.exists()) { clearInterval(_timeoutTimer); return; }
+      const data = snap.val();
       if (data.status !== "active") return;
 
-      const last = data.lastActivity?.toDate?.() ?? new Date();
-      if ((Date.now() - last.getTime()) / 1000 > 90) {
+      const last = data.lastActivity || Date.now();
+      if ((Date.now() - last) / 1000 > 90) {
         clearInterval(_timeoutTimer);
+        const fullLog = (data.fullLog || []);
+        fullLog.push("⏱️ Opponent timed out. Victory by default!");
         await _battleRef.update({
           status:   "done",
           winnerId: _myUid,
-          fullLog:  firebase.firestore.FieldValue.arrayUnion("⏱️ Opponent timed out. Victory by default!"),
+          fullLog:  fullLog,
         });
       }
     }, 15000);
@@ -482,12 +479,12 @@ const Battle = (() => {
   ════════════════════════════════════════════════════════ */
 
   async function cancelMatchmaking() {
-    if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+    if (_unsubscribe) { _battleRef.off('value', _unsubscribe); _unsubscribe = null; }
     if (_timeoutTimer) { clearInterval(_timeoutTimer); _timeoutTimer = null; }
     if (_battleRef && _myRole === "host") {
       try {
-        const snap = await _battleRef.get();
-        if (snap.exists && snap.data().status === "waiting") await _battleRef.delete();
+        const snap = await _battleRef.once('value');
+        if (snap.exists() && snap.val().status === "waiting") await _battleRef.remove();
       } catch (_) {}
     }
     _battleRef     = null;

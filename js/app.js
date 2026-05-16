@@ -278,14 +278,13 @@ const App = (() => {
   ────────────────────────────────────────────────────────────── */
   async function _loadPlayer() {
     try {
-      const ref  = db.collection("players").doc(_user.uid);
-      const snap = await ref.get();
+      const data = await DB.getPlayer(_user.uid);
 
-      if (!snap.exists) {
+      if (!data) {
         // Brand new player — create document + assign egg
-        await _createNewPlayer(ref);
+        await _createNewPlayer();
       } else {
-        _userData = snap.data();
+        _userData = data;
       }
 
       await _loadPigeon();
@@ -297,11 +296,11 @@ const App = (() => {
     }
   }
 
-  async function _createNewPlayer(ref) {
+  async function _createNewPlayer() {
     _userData = {
       uid:          _user.uid,
       username:     _user.displayName ?? _user.email?.split('@')[0] ?? "pigeon_owner",
-      createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:    Date.now(),
       totalLogins:  0,
       loginDates:   [],
       elo:          GAME_CONFIG.eloDefault,
@@ -310,7 +309,7 @@ const App = (() => {
       pigeonId:     null,
     };
     try {
-      await ref.set(_userData);
+      await DB.setPlayer(_user.uid, _userData);
     } catch (err) {
       console.error("[App] Create player failed:", err);
       showToast("Failed to create profile. Check connection.");
@@ -324,9 +323,9 @@ const App = (() => {
   async function _loadPigeon() {
     try {
       // Even if hasPigeon is false, they might have an unhatched egg (incubation progress)
-      const snap = await db.collection("pigeons").doc(_user.uid).get();
-      if (snap.exists) {
-        _pigeon = snap.data();
+      const data = await DB.getPigeon(_user.uid);
+      if (data) {
+        _pigeon = data;
         // Sync localStorage gates so refresh can never bypass them
         _syncLocksFromFirestore(_user.uid, _pigeon);
       }
@@ -347,12 +346,13 @@ const App = (() => {
       if (dates.includes(today)) return; // already counted
 
       dates.push(today);
-      await db.collection("players").doc(_user.uid).update({
+      const newTotalLogins = (_userData.totalLogins ?? 0) + 1;
+      await DB.updatePlayer(_user.uid, {
         loginDates:  dates,
-        totalLogins: firebase.firestore.FieldValue.increment(1),
+        totalLogins: newTotalLogins,
       });
       _userData.loginDates  = dates;
-      _userData.totalLogins = (_userData.totalLogins ?? 0) + 1;
+      _userData.totalLogins = newTotalLogins;
 
       // Apply bond decay if pigeon exists and player missed yesterday
       if (_pigeon) {
@@ -361,7 +361,7 @@ const App = (() => {
         const yStr = yesterday.toISOString().slice(0, 10);
         if (!dates.includes(yStr)) {
           const newBond = Math.max(0, (_pigeon.bond ?? 50) - GAME_CONFIG.bondDecayPerDay);
-          await db.collection("pigeons").doc(_user.uid).update({ bond: newBond });
+          await DB.updatePigeon(_user.uid, { bond: newBond });
           _pigeon.bond = newBond;
         }
       }
@@ -499,20 +499,17 @@ const App = (() => {
 
     try {
       // Re-fetch pigeon doc to get latest incubation log
-      const pigeonRef  = db.collection("pigeons").doc(_user.uid);
-      const pigeonSnap = await pigeonRef.get();
+      const data = await DB.getPigeon(_user.uid);
 
-      // Double-check Firestore — belt and suspenders
-      if (pigeonSnap.exists && pigeonSnap.data().lastActionDate === today) {
+      // Double-check — belt and suspenders
+      if (data && data.lastActionDate === today) {
         showToast("Already done today — come back tomorrow!");
-        _pigeon = pigeonSnap.data();
+        _pigeon = data;
         _renderEggScreen();
         return;
       }
 
-      const incubationLog = pigeonSnap.exists
-        ? (pigeonSnap.data().incubationLog ?? [])
-        : [];
+      const incubationLog = data ? (data.incubationLog ?? []) : [];
 
       incubationLog.push(action);
 
@@ -523,8 +520,8 @@ const App = (() => {
         hatched:        false,
       };
 
-      if (pigeonSnap.exists) await pigeonRef.update(pigeonData);
-      else await pigeonRef.set(pigeonData);
+      if (data) await DB.updatePigeon(_user.uid, pigeonData);
+      else await DB.setPigeon(_user.uid, pigeonData);
 
       _pigeon = pigeonData;
       showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} done! Come back tomorrow.`);
@@ -574,8 +571,8 @@ const App = (() => {
     };
 
     try {
-      await db.collection("pigeons").doc(_user.uid).set(pigeonData);
-      await db.collection("players").doc(_user.uid).update({ hasPigeon: true, pigeonId: _user.uid });
+      await DB.setPigeon(_user.uid, pigeonData);
+      await DB.updatePlayer(_user.uid, { hasPigeon: true, pigeonId: _user.uid });
 
       _pigeon = pigeonData;
       _userData.hasPigeon = true;
@@ -744,11 +741,11 @@ const App = (() => {
     _lockAction(_user.uid, careType);
 
     try {
-      // Double-check Firestore
-      const snap = await db.collection("pigeons").doc(_user.uid).get();
-      if (snap.exists && snap.data()[field] === today) {
+      // Double-check
+      const data = await DB.getPigeon(_user.uid);
+      if (data && data[field] === today) {
         showToast("Already done today — come back tomorrow!");
-        _pigeon = snap.data();
+        _pigeon = data;
         _renderHomeScreen();
         return;
       }
@@ -759,13 +756,12 @@ const App = (() => {
       let statUpdates = {};
       if (careType === "train") {
         const weakest = _weakestStat(_pigeon.stats);
-        statUpdates[`stats.${weakest}`] = Math.min(
-          GAME_CONFIG.statMax,
-          (_pigeon.stats[weakest] ?? 0) + 3
-        );
+        const stats = { ..._pigeon.stats };
+        stats[weakest] = Math.min(GAME_CONFIG.statMax, (stats[weakest] ?? 0) + 3);
+        statUpdates.stats = stats;
       }
 
-      await db.collection("pigeons").doc(_user.uid).update({
+      await DB.updatePigeon(_user.uid, {
         [field]: today,
         bond:    newBond,
         ...statUpdates,
@@ -884,7 +880,7 @@ const App = (() => {
     const newElo = Math.max(0, (_userData.elo ?? GAME_CONFIG.eloDefault) + eloDelta);
 
     try {
-      await db.collection("players").doc(_user.uid).update({
+      await DB.updatePlayer(_user.uid, {
         battleLog: newLog,
         elo:       newElo,
       });
@@ -929,35 +925,24 @@ const App = (() => {
     el.innerHTML = `<p class="empty-state">Loading leaderboard…</p>`;
 
     try {
-      // If ordering by ELO fails (e.g. permission or index), try simple list
-      let snap;
-      try {
-        snap = await db.collection("players")
-          .orderBy("elo", "desc")
-          .limit(5)
-          .get();
-      } catch (err) {
-        console.warn("[App] ELO-sorted leaderboard failed, falling back to basic list:", err);
-        snap = await db.collection("players")
-          .limit(5)
-          .get();
-      }
+      const list = await DB.getLeaderboard();
+      const top5 = list.slice(0, 5);
 
       el.innerHTML = "";
 
-      if (snap.empty) {
+      if (top5.length === 0) {
         el.innerHTML = `<p class="empty-state">No players found</p>`;
         return;
       }
 
-      snap.docs.forEach((doc, i) => {
-        const d = doc.data();
+      top5.forEach((d, i) => {
         const row = document.createElement("div");
         row.className = "lb-row";
+        const formattedElo = _formatNumber(d.elo ?? 1000);
         row.innerHTML = `
           <span class="lb-rank">#${i + 1}</span>
           <span class="lb-name">${d.username ?? "Pigeon owner"}</span>
-          <span class="lb-elo">${d.elo ?? 1000}</span>
+          <span class="lb-elo">${formattedElo}</span>
         `;
         el.appendChild(row);
       });
@@ -1035,7 +1020,7 @@ const App = (() => {
     updates.rehabDay = rehabDay;
 
     try {
-      await db.collection("pigeons").doc(_user.uid).update(updates);
+      await DB.updatePigeon(_user.uid, updates);
       _pigeon.bond    = bond;
       _pigeon.stats   = stats;
       _pigeon.rehabDay = rehabDay;
@@ -1069,10 +1054,16 @@ const App = (() => {
     }
 
     try {
-      await db.collection("pigeons").doc(_user.uid).update(updates);
+      await DB.updatePigeon(_user.uid, updates);
     } catch (err) {
       console.error("[App] Check rehab failed:", err);
     }
+  }
+
+  function _formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return num;
   }
 
   function _calcStreak(loginDates) {
