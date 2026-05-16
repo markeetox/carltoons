@@ -87,7 +87,7 @@ const PIGEON_CONFIG = {
 
 /* ── Firebase init ───────────────────────────────────────── */
 firebase.initializeApp(FIREBASE_CONFIG);
-const db   = firebase.firestore();
+const db   = firebase.database();
 const auth = firebase.auth();
 
 /* ── PWA service worker ──────────────────────────────────── */
