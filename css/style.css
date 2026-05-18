@@ -563,7 +563,11 @@ input { font-family: var(--font-body); }
 @keyframes pulse-opacity {
   0%, 100% { opacity: 1; } 50% { opacity: .35; }
 }
+@keyframes pulse-scale {
+  0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); }
+}
 .pulse { animation: pulse-opacity 1.2s ease-in-out infinite; }
+.badge.pulse { animation: pulse-scale 1s ease-in-out infinite; }
 
 /* name input */
 .hatch-prompt {
@@ -1204,9 +1208,14 @@ input { font-family: var(--font-body); }
   justify-content: space-between;
   padding: 12px;
   background: var(--clr-surface);
-  border: 1px solid var(--clr-border);
+  border: 1.5px solid var(--clr-border);
   border-radius: var(--r-md);
   width: 100%;
+  transition: border-color 0.2s;
+}
+.challenge-row.highlight {
+  border-color: var(--clr-gold);
+  background: var(--clr-gold-dim);
 }
 .challenge-info {
   display: flex;
