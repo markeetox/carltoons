@@ -159,6 +159,14 @@ const App = (() => {
       }
     });
 
+    // Battle back button
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#btn-battle-back")) {
+        showScreen("home");
+        return;
+      }
+    });
+
     // Logout — always in the nav, works from any screen
     document.addEventListener("click", async (e) => {
       if (!e.target.closest("#btn-logout")) return;
@@ -1127,7 +1135,7 @@ const App = (() => {
       battles.forEach((b) => {
         const isMyTurn = _isMyTurn(b);
         const isHost = b.hostId === _user.uid;
-        const opponentPigeon = isHost ? (b.guestPigeon || {name: "???"}) : b.hostPigeon;
+        const opponentPigeon = isHost ? (b.guestPigeon || {name: b.guestName || "???"}) : b.hostPigeon;
 
         const row = document.createElement("div");
         row.className = "challenge-row" + (isMyTurn ? " highlight" : "");
