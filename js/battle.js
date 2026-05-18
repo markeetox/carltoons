@@ -176,6 +176,10 @@ const Battle = (() => {
     if (d.status === "active" && !d.hostMove && !d.guestMove) {
       _moveSubmitted = false;
       _setPickerWaiting(false);
+    } else if (d.status === "active" && ((_myRole === "host" && d.hostMove) || (_myRole === "guest" && d.guestMove))) {
+      // Ensure we are in "waiting" mode if we already submitted
+      _moveSubmitted = true;
+      _setPickerWaiting(true);
     }
 
     // Touch the timeout clock on any activity
@@ -420,18 +424,7 @@ const Battle = (() => {
 
     const isHost = _myRole === "host";
     const iWon   = d.winnerId === _myUid;
-
-    const playerRig   = document.getElementById("player-rig");
-    const opponentRig = document.getElementById("opponent-rig");
-
-    setTimeout(() => {
-      if (iWon) {
-        triggerAnimation(playerRig,   "victory", 900);
-        triggerAnimation(opponentRig, "ko");
-      } else {
-        triggerAnimation(playerRig, "ko");
-      }
-    }, 400);
+    const winnerPigeon = d.winnerId === d.hostId ? d.hostPigeon : d.guestPigeon;
 
     _setPickerWaiting(true);
 
@@ -446,9 +439,30 @@ const Battle = (() => {
       console.error("[Battle] Record battle result failed:", err);
     }
 
+    // Show celebration overlay
+    const overlay = document.getElementById("battle-result-overlay");
+    const titleEl = document.getElementById("battle-result-title");
+    const nameEl  = document.getElementById("winner-name");
+    const rigEl   = document.getElementById("winner-rig");
+
+    titleEl.textContent = iWon ? "VICTORY!" : "DEFEAT";
+    titleEl.style.color = iWon ? "var(--clr-green)" : "var(--clr-red)";
+    nameEl.textContent  = winnerPigeon?.name ?? "Pigeon";
+
+    buildPigeonRig(rigEl, winnerPigeon.traits, { idle: false });
+    rigEl.classList.add("victory");
+
+    overlay.classList.remove("hidden");
+
+    document.getElementById("btn-battle-close").onclick = () => {
+      overlay.classList.add("hidden");
+      cancelMatchmaking();
+      showScreen("home");
+    };
+
     // Soft-delete the battle doc after 30s (keeps it readable for both)
     setTimeout(async () => {
-      try { await _battleRef?.delete(); } catch (_) {}
+      try { await _battleRef?.remove(); } catch (_) {}
     }, 30000);
   }
 
