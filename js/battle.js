@@ -55,81 +55,77 @@ const Battle = (() => {
      MATCHMAKING
   ════════════════════════════════════════════════════════ */
 
-  async function findMatch(playerData) {
+  async function sendChallenge(targetPlayerData, myPlayerData) {
     try {
-      _myUid      = playerData.uid;
+      _myUid = myPlayerData.uid;
+      _myRole = "host";
       _battleOver = false;
-      _rigBuilt   = false;
+      _rigBuilt = false;
       _matchFoundShown = false;
 
-      _setStatus("🔍 Searching for an opponent…");
+      const maxHP = _maxHP(myPlayerData.stats);
+      _battleRef = await DB.createBattle({
+        status: "challenged",
+        hostId: myPlayerData.uid,
+        guestId: targetPlayerData.uid,
+        hostPigeon: _pigeonPayload(myPlayerData),
+        guestPigeon: null, // guest pigeon info added when they accept
+        round: 1,
+        hostHP: maxHP,
+        guestHP: 0,
+        hostMaxHP: maxHP,
+        guestMaxHP: 0,
+        hostMove: null,
+        guestMove: null,
+        roundLog: [],
+        fullLog: [`⚔️ ${myPlayerData.name} challenged ${targetPlayerData.username}!`],
+        winnerId: null,
+        createdAt: Date.now(),
+        lastActivity: Date.now(),
+      });
 
-      const waiting = await DB.getWaitingBattles();
-
-      // Find first open battle that belongs to someone else
-      const joinable = waiting.find((b) => b.hostId !== _myUid);
-
-      if (joinable) {
-        await _joinBattle(joinable, playerData);
-      } else {
-        await _createBattle(playerData);
-      }
+      _listenToBattle();
+      showToast(`Challenge sent to ${targetPlayerData.username}!`);
     } catch (err) {
-      console.error("[Battle] Find match failed:", err);
-      const isPermissionError = err.message?.includes("permissions") || err.code === "permission-denied";
-      _setStatus("❌ Matchmaking failed: " + (err.message || "Unknown error"));
-      showToast(isPermissionError ? "Firebase permission error. Check Firestore rules/indexes." : "Matchmaking error.");
+      console.error("[Battle] Send challenge failed:", err);
+      showToast("Failed to send challenge.");
     }
   }
 
-  async function _createBattle(playerData) {
-    _myRole = "host";
-    _setStatus("🕊️ Waiting for a challenger…");
+  async function acceptChallenge(battleId, myPlayerData) {
+    try {
+      _myUid = myPlayerData.uid;
+      _myRole = "guest";
+      _battleOver = false;
+      _rigBuilt = false;
+      _matchFoundShown = false;
 
-    const maxHP = _maxHP(playerData.stats);
-    _battleRef  = await DB.createBattle({
-      status:       "waiting",
-      hostId:       playerData.uid,
-      guestId:      null,
-      hostPigeon:   _pigeonPayload(playerData),
-      guestPigeon:  null,
-      round:        1,
-      hostHP:       maxHP,
-      guestHP:      0,
-      hostMaxHP:    maxHP,
-      guestMaxHP:   0,
-      hostMove:     null,
-      guestMove:    null,
-      roundLog:     [],
-      fullLog:      ["⚔️ Battle room open. Waiting for challenger…"],
-      winnerId:     null,
-      createdAt:    Date.now(),
-      lastActivity: Date.now(),
-    });
+      _battleRef = db.ref('battles/' + battleId);
+      const snap = await _battleRef.once('value');
+      if (!snap.exists()) {
+        showToast("Battle no longer exists.");
+        return;
+      }
 
-    _listenToBattle();
-  }
+      const battleData = snap.val();
+      const maxHP = _maxHP(myPlayerData.stats);
+      const fullLog = (battleData.fullLog || []);
+      fullLog.push(`🐦 ${myPlayerData.name} accepted the challenge! Battle starts now.`);
 
-  async function _joinBattle(battleData, playerData) {
-    _myRole    = "guest";
-    _battleRef = db.ref('battles/' + battleData.id);
+      await _battleRef.update({
+        status: "active",
+        guestPigeon: _pigeonPayload(myPlayerData),
+        guestHP: maxHP,
+        guestMaxHP: maxHP,
+        fullLog: fullLog,
+        lastActivity: Date.now(),
+      });
 
-    const maxHP = _maxHP(playerData.stats);
-
-    const fullLog = (battleData.fullLog || []);
-    fullLog.push(`🐦 ${playerData.name} accepted the challenge! Battle starts now.`);
-
-    await _battleRef.update({
-      status:       "active",
-      guestId:      playerData.uid,
-      guestPigeon:  _pigeonPayload(playerData),
-      guestHP:      maxHP,
-      guestMaxHP:   maxHP,
-      fullLog:      fullLog,
-      lastActivity: Date.now(),
-    });
-
-    _listenToBattle();
+      _listenToBattle();
+    } catch (err) {
+      console.error("[Battle] Accept challenge failed:", err);
+      showToast("Failed to accept challenge.");
+    }
   }
 
   /* ════════════════════════════════════════════════════════
@@ -149,6 +145,11 @@ const Battle = (() => {
 
     if (d.status === "waiting") {
       _setStatus("🕊️ Waiting for a challenger…");
+      return;
+    }
+
+    if (d.status === "challenged") {
+      _setStatus("💌 Challenge sent...");
       return;
     }
 
@@ -573,5 +574,5 @@ const Battle = (() => {
     });
   }
 
-  return { init, findMatch, cancelMatchmaking, isInBattle };
+  return { init, sendChallenge, acceptChallenge, cancelMatchmaking, isInBattle };
 })();

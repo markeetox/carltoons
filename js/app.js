@@ -130,6 +130,7 @@ const App = (() => {
     _initEggActions();
     _initCareActions();
     _initBattleButtons();
+    _initChallenges();
     Hatch.init();
     Battle.init();
 
@@ -561,6 +562,7 @@ const App = (() => {
       traits,
       stats,
       level:         1,
+      xp:            0,
       bond:          50,
       hatched:       true,
       hatchDate:     todayStr(),
@@ -753,7 +755,11 @@ const App = (() => {
       const bondGain = GAME_CONFIG[`bondGain${careType.charAt(0).toUpperCase() + careType.slice(1)}`] ?? 5;
       const newBond  = Math.min(GAME_CONFIG.bondMax, (_pigeon.bond ?? 50) + bondGain);
 
-      let statUpdates = {};
+      // XP gain: 20 per care action
+      const xpGain = 20;
+      const { level, xp } = _applyXP(_pigeon.level ?? 1, _pigeon.xp ?? 0, xpGain);
+
+      let statUpdates = { level, xp };
       if (careType === "train") {
         const weakest = _weakestStat(_pigeon.stats);
         const stats = { ..._pigeon.stats };
@@ -769,6 +775,9 @@ const App = (() => {
 
       _pigeon[field] = today;
       _pigeon.bond   = newBond;
+      _pigeon.level  = level;
+      _pigeon.xp     = xp;
+
       if (careType === "train") {
         const w = _weakestStat(_pigeon.stats);
         _pigeon.stats[w] = Math.min(GAME_CONFIG.statMax, (_pigeon.stats[w] ?? 0) + 3);
@@ -804,8 +813,9 @@ const App = (() => {
     if (nameEl) nameEl.textContent = _pigeon.name ?? "—";
 
     const subEl = document.getElementById("profile-sub");
-    if (subEl) subEl.textContent = `Level ${_pigeon.level ?? 1} · ${(_userData.battleLog ?? []).length} battles`;
+    if (subEl) subEl.textContent = `${(_userData.battleLog ?? []).length} battles`;
 
+    updateLevelUI(_pigeon.level ?? 1, _pigeon.xp ?? 0);
     renderFullStatCard("profile-stat-card", _pigeon.stats);
 
     // Battle log
@@ -890,6 +900,13 @@ const App = (() => {
         elo:       newElo,
       });
 
+      // XP gain from battle: 50 for win, 20 for loss
+      const xpGain = won ? 50 : 20;
+      const { level, xp } = _applyXP(_pigeon.level ?? 1, _pigeon.xp ?? 0, xpGain);
+      await DB.updatePigeon(_user.uid, { level, xp });
+      _pigeon.level = level;
+      _pigeon.xp = xp;
+
       // Update local state
       _userData.battleLog = newLog;
       _userData.elo       = newElo;
@@ -925,7 +942,7 @@ const App = (() => {
   /* ──────────────────────────────────────────────────────────
      LEADERBOARD preview
   ────────────────────────────────────────────────────────────── */
-  async function _renderLeaderboard() {
+  async function _renderLeaderboard(query = "") {
     const el = document.getElementById("leaderboard-preview");
     if (!el) return;
 
@@ -935,29 +952,48 @@ const App = (() => {
       return;
     }
 
-    el.innerHTML = `<p class="empty-state">Loading leaderboard…</p>`;
+    el.innerHTML = `<p class="empty-state">Loading...</p>`;
 
     try {
-      const list = await DB.getLeaderboard();
-      const top5 = list.slice(0, 5);
+      let list = [];
+      if (query) {
+        list = await DB.searchPlayers(query);
+      } else {
+        list = await DB.getLeaderboard();
+        list = list.slice(0, 5);
+      }
 
       el.innerHTML = "";
 
-      if (top5.length === 0) {
+      if (list.length === 0) {
         el.innerHTML = `<p class="empty-state">No players found</p>`;
         return;
       }
 
-      top5.forEach((d, i) => {
+      list.forEach((d, i) => {
         const row = document.createElement("div");
         row.className = "lb-row";
         const formattedElo = _formatNumber(d.elo ?? 1000);
+        const isMe = d.uid === _user.uid;
+
         row.innerHTML = `
-          <span class="lb-rank">#${i + 1}</span>
+          <span class="lb-rank">${query ? "" : "#" + (i + 1)}</span>
           <span class="lb-name">${d.username ?? "Pigeon owner"}</span>
-          <span class="lb-elo">${formattedElo}</span>
+          <div class="lb-right">
+            <span class="lb-elo">${formattedElo}</span>
+            ${!isMe ? `<button class="btn-challenge" data-uid="${d.uid}" data-username="${d.username}">Challenge</button>` : ""}
+          </div>
         `;
         el.appendChild(row);
+      });
+
+      // Wire up challenge buttons
+      el.querySelectorAll(".btn-challenge").forEach(btn => {
+        btn.onclick = () => {
+          const targetUid = btn.dataset.uid;
+          const targetUsername = btn.dataset.username;
+          _challengePlayer(targetUid, targetUsername);
+        };
       });
     } catch (err) {
       console.error("[App] Leaderboard failed:", err);
@@ -966,9 +1002,106 @@ const App = (() => {
         <div class="empty-state" style="flex-direction:column;gap:8px;text-align:center">
           <i class="fa-solid fa-triangle-exclamation"></i>
           <span>Leaderboard unavailable</span>
-          ${isPermissionError ? '<span style="font-size:11px;opacity:0.7">Missing Firestore permissions or indexes.</span>' : ''}
+          ${isPermissionError ? '<span style="font-size:11px;opacity:0.7">Missing database permissions or indexes.</span>' : ''}
         </div>
       `;
+    }
+  }
+
+  async function _challengePlayer(targetUid, targetUsername) {
+    if (!_pigeon) { showToast("You need a pigeon first!"); return; }
+    if (Battle.isInBattle()) { showToast("Already in a battle!"); return; }
+
+    Battle.sendChallenge({ uid: targetUid, username: targetUsername }, {
+      uid:    _user.uid,
+      name:   _pigeon.name,
+      traits: _pigeon.traits,
+      stats:  _pigeon.stats,
+    });
+  }
+
+  function _initChallenges() {
+    const btnChallenges = document.getElementById("btn-challenges");
+    const modal = document.getElementById("challenges-modal");
+    const btnClose = document.getElementById("btn-close-challenges");
+    const searchInput = document.getElementById("player-search");
+
+    btnChallenges?.addEventListener("click", () => {
+      modal?.classList.remove("hidden");
+      _renderChallengesList();
+    });
+
+    btnClose?.addEventListener("click", () => {
+      modal?.classList.add("hidden");
+    });
+
+    searchInput?.addEventListener("input", (e) => {
+      const q = e.target.value.trim();
+      _renderLeaderboard(q);
+    });
+
+    // Periodically check for incoming challenges
+    setInterval(_updateChallengeCount, 10000);
+    _updateChallengeCount();
+  }
+
+  async function _updateChallengeCount() {
+    if (!_user) return;
+    try {
+      const challenges = await DB.getIncomingChallenges(_user.uid);
+      const countEl = document.getElementById("challenge-count");
+      if (countEl) {
+        countEl.textContent = challenges.length;
+        countEl.style.display = challenges.length > 0 ? "inline-block" : "none";
+      }
+    } catch (err) {
+      console.error("[App] Update challenge count failed:", err);
+    }
+  }
+
+  async function _renderChallengesList() {
+    const el = document.getElementById("challenges-list");
+    if (!el) return;
+    el.innerHTML = `<p class="empty-state">Loading challenges...</p>`;
+
+    try {
+      const list = await DB.getIncomingChallenges(_user.uid);
+      el.innerHTML = "";
+
+      if (list.length === 0) {
+        el.innerHTML = `<p class="empty-state">No pending challenges</p>`;
+        return;
+      }
+
+      list.forEach((c) => {
+        const row = document.createElement("div");
+        row.className = "challenge-row";
+        row.innerHTML = `
+          <div class="challenge-info">
+            <span class="challenge-host">${c.hostPigeon.name}</span>
+            <span class="challenge-sub">from ${c.hostId.slice(0, 6)}...</span>
+          </div>
+          <button class="btn-accept" data-id="${c.id}">Accept</button>
+        `;
+        el.appendChild(row);
+      });
+
+      el.querySelectorAll(".btn-accept").forEach(btn => {
+        btn.onclick = () => {
+          const battleId = btn.dataset.id;
+          document.getElementById("challenges-modal").classList.add("hidden");
+          Battle.acceptChallenge(battleId, {
+            uid:    _user.uid,
+            name:   _pigeon.name,
+            traits: _pigeon.traits,
+            stats:  _pigeon.stats,
+          });
+          showScreen("battle");
+        };
+      });
+    } catch (err) {
+      console.error("[App] Render challenges failed:", err);
+      el.innerHTML = `<p class="empty-state">Error loading challenges</p>`;
     }
   }
 
@@ -1071,6 +1204,20 @@ const App = (() => {
     } catch (err) {
       console.error("[App] Check rehab failed:", err);
     }
+  }
+
+  function _applyXP(level, xp, gain) {
+    let newXP = xp + gain;
+    let newLevel = level;
+    while (true) {
+      const nextXP = GAME_CONFIG.getXPForLevel(newLevel + 1);
+      if (newXP >= nextXP) {
+        newLevel++;
+      } else {
+        break;
+      }
+    }
+    return { level: newLevel, xp: newXP };
   }
 
   function _formatNumber(num) {

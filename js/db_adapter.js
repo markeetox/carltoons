@@ -60,5 +60,38 @@ const DB = {
       list.push(child.val());
     });
     return list.reverse(); // Highest ELO first
+  },
+  async searchPlayers(query) {
+    const snap = await db.ref('players')
+      .orderByChild('username')
+      .startAt(query)
+      .endAt(query + '\uf8ff')
+      .limitToFirst(10)
+      .once('value');
+
+    const list = [];
+    snap.forEach(child => {
+      list.push(child.val());
+    });
+    return list;
+  },
+  async getIncomingChallenges(uid) {
+    const snap = await db.ref('battles')
+      .orderByChild('guestId')
+      .equalTo(uid)
+      .once('value');
+
+    const challenges = [];
+    snap.forEach(child => {
+      const val = child.val();
+      if (val.status === 'challenged') {
+        challenges.push({ id: child.key, ...val });
+      }
+    });
+    return challenges;
+  },
+  async getBattle(battleId) {
+    const snap = await db.ref(`battles/${battleId}`).once('value');
+    return snap.exists() ? { id: snap.key, ...snap.val() } : null;
   }
 };

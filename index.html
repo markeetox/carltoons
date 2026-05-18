@@ -263,7 +263,13 @@
     <div class="profile-pigeon-wrap">
       <div class="pigeon-rig idle" id="profile-rig"></div>
       <h2 class="profile-name" id="profile-name">—</h2>
-      <p class="profile-sub" id="profile-sub">Level 1 · 0 battles</p>
+      <div class="level-bar-wrap">
+        <div class="level-bar-bg">
+          <div class="level-bar-fill" id="level-fill" style="width:0%"></div>
+        </div>
+        <span class="level-label" id="level-label">Lvl 1 (0%)</span>
+      </div>
+      <p class="profile-sub" id="profile-sub">0 battles</p>
     </div>
 
     <!-- Full stat card -->
@@ -351,12 +357,33 @@
     <!-- Matchmaking state (shown before battle starts) -->
     <div class="matchmaking" id="matchmaking">
       <p class="matchmaking-title">Tooniseum</p>
-      <p class="matchmaking-sub">Challenge another pigeon owner to battle</p>
-      <button class="btn-primary" id="btn-find-match">
-        <i class="fa-solid fa-crosshairs"></i> Find a Match
-      </button>
+
+      <div class="matchmaking-controls">
+        <button class="btn-primary challenge-inbox-btn" id="btn-challenges">
+          <i class="fa-solid fa-envelope"></i> Challenges <span id="challenge-count" class="badge">0</span>
+        </button>
+
+        <div class="search-box">
+          <input type="text" id="player-search" placeholder="Search pigeons..." />
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </div>
+      </div>
+
       <div class="leaderboard-preview" id="leaderboard-preview">
-        <!-- top 5 injected by JS -->
+        <!-- top 5 or search results injected by JS -->
+      </div>
+    </div>
+
+    <!-- Challenges Modal -->
+    <div class="mood-overlay hidden" id="challenges-modal">
+      <div class="mood-card challenges-card">
+        <h2 class="mood-name">Pending Challenges</h2>
+        <div id="challenges-list" class="challenges-list">
+          <p class="empty-state">No pending challenges</p>
+        </div>
+        <button class="btn-primary mood-dismiss" id="btn-close-challenges">
+          Close
+        </button>
       </div>
     </div>
 

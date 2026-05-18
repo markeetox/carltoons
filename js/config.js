@@ -25,6 +25,7 @@ const GAME_CONFIG = {
   baseHP:           100,
   eloDefault:       1000,
   bondMax:          100,
+  getXPForLevel:    (lvl) => (lvl - 1) * 100 + Math.pow(lvl - 1, 2) * 50, // progressive: 0, 150, 400, 750...
   bondDecayPerDay:  5,
   bondGainFeed:     8,
   bondGainPlay:     10,
