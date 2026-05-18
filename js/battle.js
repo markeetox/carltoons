@@ -55,6 +55,68 @@ const Battle = (() => {
      MATCHMAKING
   ════════════════════════════════════════════════════════ */
 
+  async function findMatch(myPlayerData) {
+    try {
+      _myUid = myPlayerData.uid;
+      _battleOver = false;
+      _rigBuilt = false;
+      _matchFoundShown = false;
+      _setStatus("🕊️ Searching for opponents...");
+
+      const waiting = await DB.getWaitingBattles();
+      // Find one that isn't mine
+      const match = waiting.find(b => b.hostId !== _myUid);
+
+      if (match) {
+        _myRole = "guest";
+        _battleRef = match.ref;
+        const maxHP = _maxHP(myPlayerData.stats);
+
+        // Joining existing battle
+        const fullLog = (match.fullLog || []);
+        fullLog.push(`🐦 ${myPlayerData.name} joined the arena! Battle starts now.`);
+
+        await _battleRef.update({
+          status: "active",
+          guestId: _myUid,
+          guestPigeon: _pigeonPayload(myPlayerData),
+          guestHP: maxHP,
+          guestMaxHP: maxHP,
+          fullLog: fullLog,
+          lastActivity: Date.now(),
+        });
+        _listenToBattle();
+      } else {
+        // Create new waiting battle
+        _myRole = "host";
+        const maxHP = _maxHP(myPlayerData.stats);
+        _battleRef = await DB.createBattle({
+          status: "waiting",
+          hostId: _myUid,
+          guestId: null,
+          hostPigeon: _pigeonPayload(myPlayerData),
+          guestPigeon: null,
+          round: 1,
+          hostHP: maxHP,
+          guestHP: 0,
+          hostMaxHP: maxHP,
+          guestMaxHP: 0,
+          hostMove: null,
+          guestMove: null,
+          roundLog: [],
+          fullLog: [`⚔️ ${myPlayerData.name} is waiting for a challenger in the Tooniseum...`],
+          winnerId: null,
+          createdAt: Date.now(),
+          lastActivity: Date.now(),
+        });
+        _listenToBattle();
+      }
+    } catch (err) {
+      console.error("[Battle] findMatch failed:", err);
+      showToast("Matchmaking failed.");
+    }
+  }
+
   async function sendChallenge(targetPlayerData, myPlayerData) {
     try {
       _myUid = myPlayerData.uid;
@@ -89,6 +151,30 @@ const Battle = (() => {
     } catch (err) {
       console.error("[Battle] Send challenge failed:", err);
       showToast("Failed to send challenge.");
+    }
+  }
+
+  async function resumeBattle(battleId, myPlayerData) {
+    try {
+      _myUid = myPlayerData.uid;
+      _battleOver = false;
+      _rigBuilt = false;
+      _matchFoundShown = true; // don't show the splash again
+
+      _battleRef = db.ref('battles/' + battleId);
+      const snap = await _battleRef.once('value');
+      if (!snap.exists()) {
+        showToast("Battle no longer exists.");
+        return;
+      }
+
+      const d = snap.val();
+      _myRole = d.hostId === _myUid ? "host" : "guest";
+
+      _listenToBattle();
+    } catch (err) {
+      console.error("[Battle] Resume battle failed:", err);
+      showToast("Failed to resume battle.");
     }
   }
 
@@ -574,5 +660,5 @@ const Battle = (() => {
     });
   }
 
-  return { init, sendChallenge, acceptChallenge, cancelMatchmaking, isInBattle };
+  return { init, findMatch, sendChallenge, acceptChallenge, resumeBattle, cancelMatchmaking, isInBattle };
 })();

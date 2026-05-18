@@ -75,20 +75,22 @@ const DB = {
     });
     return list;
   },
-  async getIncomingChallenges(uid) {
-    const snap = await db.ref('battles')
-      .orderByChild('guestId')
-      .equalTo(uid)
-      .once('value');
+  async getMyBattles(uid) {
+    // RTDB limited querying: fetch by guestId, then by hostId, then merge.
+    // In a real app we might store /users/{uid}/battles/{battleId}: true
+    const [asGuest, asHost] = await Promise.all([
+      db.ref('battles').orderByChild('guestId').equalTo(uid).once('value'),
+      db.ref('battles').orderByChild('hostId').equalTo(uid).once('value')
+    ]);
 
-    const challenges = [];
-    snap.forEach(child => {
-      const val = child.val();
-      if (val.status === 'challenged') {
-        challenges.push({ id: child.key, ...val });
-      }
+    const results = new Map();
+    [asGuest, asHost].forEach(snap => {
+      snap.forEach(child => {
+        results.set(child.key, { id: child.key, ...child.val() });
+      });
     });
-    return challenges;
+
+    return Array.from(results.values()).filter(b => b.status !== 'done');
   },
   async getBattle(battleId) {
     const snap = await db.ref(`battles/${battleId}`).once('value');
