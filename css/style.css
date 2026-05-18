@@ -1087,6 +1087,25 @@ input { font-family: var(--font-body); }
 .auth-input#auth-username { display: none; }
 .register-mode .auth-input#auth-username { display: block; }
 
+.auth-forgot-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+  padding: 0 4px;
+}
+.btn-link {
+  font-size: 13px;
+  color: var(--clr-text-dim);
+  text-decoration: underline;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+  padding: 8px 0; /* larger tap target */
+  touch-action: manipulation;
+}
+.btn-link:hover { opacity: 1; color: var(--clr-purple); }
+.login-content .btn-link { color: rgba(255,255,255,0.7); }
+.login-content .btn-link:hover { color: #fff; }
+
 /* Error message */
 .auth-error {
   font-size: 12px; color: var(--clr-red);

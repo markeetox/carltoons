@@ -188,6 +188,8 @@ const App = (() => {
     const btnSubmit   = document.getElementById("btn-auth-submit");
     const btnLabel    = document.getElementById("btn-auth-label");
     const errEl       = document.getElementById("auth-error");
+    const btnForgot   = document.getElementById("btn-forgot-pw");
+    const forgotWrap  = document.querySelector(".auth-forgot-wrap");
 
     // Tab switching
     tabLogin.addEventListener("click", () => {
@@ -197,6 +199,7 @@ const App = (() => {
       form.classList.remove("register-mode");
       btnLabel.textContent = "Login";
       errEl.textContent = "";
+      forgotWrap.style.display = "flex";
     });
 
     tabRegister.addEventListener("click", () => {
@@ -206,6 +209,29 @@ const App = (() => {
       form.classList.add("register-mode");
       btnLabel.textContent = "Create Account";
       errEl.textContent = "";
+      forgotWrap.style.display = "none";
+    });
+
+    // Forgot Password
+    btnForgot.addEventListener("click", async () => {
+      const email = document.getElementById("auth-email").value.trim();
+      if (!email) {
+        errEl.textContent = "Enter your email first.";
+        return;
+      }
+      errEl.textContent = "";
+      btnForgot.disabled = true;
+      btnForgot.textContent = "Sending...";
+
+      try {
+        await auth.sendPasswordResetEmail(email);
+        showToast("Reset email sent! Check your inbox.");
+      } catch (err) {
+        errEl.textContent = _authErrorMsg(err.code);
+      } finally {
+        btnForgot.disabled = false;
+        btnForgot.textContent = "Forgot password?";
+      }
     });
 
     // Submit
@@ -619,13 +645,17 @@ const App = (() => {
 
     // Show overlay
     const overlay = document.getElementById("mood-overlay");
-    if (overlay) overlay.classList.add("show");
+    if (overlay) {
+      overlay.classList.remove("hidden");
+      overlay.classList.add("show");
+    }
   }
 
   function _hideMoodPopup() {
     const overlay = document.getElementById("mood-overlay");
     if (!overlay) return;
     overlay.classList.remove("show");
+    overlay.classList.add("hidden");
     // Belt-and-suspenders: force pointer-events off immediately
     overlay.style.pointerEvents = "none";
     // Re-enable pointer-events when shown again (handled by .show CSS)
