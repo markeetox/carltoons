@@ -6,6 +6,8 @@ A responsive Progressive Web App (PWA) Pigeon Tamagotchi game with real-time mul
 
 To make the game fully functional (especially the Leaderboard and Battles), you must configure your Firebase project with **Realtime Database**.
 
+> **IMPORTANT:** You must deploy the Realtime Database Security Rules and Indexes below to avoid "Missing or insufficient permissions" errors on the leaderboard and battle screens.
+
 ### 1. Realtime Database Security Rules
 
 Copy and paste these into your **Realtime Database > Rules** tab. These rules ensure that players can only modify their own data and that battles are handled safely.

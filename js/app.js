@@ -928,6 +928,13 @@ const App = (() => {
   async function _renderLeaderboard() {
     const el = document.getElementById("leaderboard-preview");
     if (!el) return;
+
+    // Guard: ensure user is authenticated before calling DB.getLeaderboard()
+    if (!_user) {
+      el.innerHTML = `<p class="empty-state">Please login to view leaderboard</p>`;
+      return;
+    }
+
     el.innerHTML = `<p class="empty-state">Loading leaderboard…</p>`;
 
     try {
