@@ -876,23 +876,29 @@ const App = (() => {
   ────────────────────────────────────────────────────────────── */
   async function recordBattleResult({ won, opponent, rounds, eloDelta = 0 }) {
     const entry  = { won, opponent, rounds, date: todayStr() };
-    const newLog = [...(_userData.battleLog ?? []), entry];
-    const newElo = Math.max(0, (_userData.elo ?? GAME_CONFIG.eloDefault) + eloDelta);
 
+    // Use fresh data from DB to avoid state desync on concurrent updates
     try {
+      const freshUser = await DB.getPlayer(_user.uid);
+      if (!freshUser) return;
+
+      const newLog = [...(freshUser.battleLog ?? []), entry];
+      const newElo = Math.max(0, (freshUser.elo ?? GAME_CONFIG.eloDefault) + eloDelta);
+
       await DB.updatePlayer(_user.uid, {
         battleLog: newLog,
         elo:       newElo,
       });
 
+      // Update local state
       _userData.battleLog = newLog;
       _userData.elo       = newElo;
 
-      const eloEl = document.getElementById("player-elo"); if (eloEl) eloEl.textContent = newElo;
+      const eloEl = document.getElementById("player-elo");
+      if (eloEl) eloEl.textContent = _formatNumber(newElo);
       _renderProfileScreen();
     } catch (err) {
       console.error("[App] Record battle result failed:", err);
-      // Don't toast here as it might be redundant with battle screen feedback
     }
   }
 

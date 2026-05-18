@@ -241,15 +241,23 @@ const Battle = (() => {
         if (hostFuds)  { gDmg = 0; log.push(`😵 ${d.hostPigeon.name} is confused — misses!`);  }
         if (guestFuds) { hDmg = 0; log.push(`😵 ${d.guestPigeon.name} is confused — misses!`); }
 
-        let newHostHP  = Math.max(0, d.hostHP  - gDmg);
-        let newGuestHP = Math.max(0, d.guestHP - hDmg);
+        let newHostHP  = d.hostHP  - gDmg;
+        let newGuestHP = d.guestHP - hDmg;
 
         if (hDmg > 0) log.push(`💢 ${d.hostPigeon.name} deals ${hDmg} dmg → ${d.guestPigeon.name}`);
         if (gDmg > 0) log.push(`💢 ${d.guestPigeon.name} deals ${gDmg} dmg → ${d.hostPigeon.name}`);
 
-        // WAGMI regen
-        newHostHP  = Math.min(d.hostMaxHP,  newHostHP  + Math.floor((d.hostPigeon.stats.wagmi  ?? 0) * 0.05));
-        newGuestHP = Math.min(d.guestMaxHP, newGuestHP + Math.floor((d.guestPigeon.stats.wagmi ?? 0) * 0.05));
+        // WAGMI regen only if still standing
+        if (newHostHP > 0) {
+          newHostHP = Math.min(d.hostMaxHP, newHostHP + Math.floor((d.hostPigeon.stats.wagmi ?? 0) * 0.05));
+        }
+        if (newGuestHP > 0) {
+          newGuestHP = Math.min(d.guestMaxHP, newGuestHP + Math.floor((d.guestPigeon.stats.wagmi ?? 0) * 0.05));
+        }
+
+        // Final floor at 0
+        newHostHP  = Math.max(0, newHostHP);
+        newGuestHP = Math.max(0, newGuestHP);
 
         log.push(`❤️ ${d.hostPigeon.name}: ${newHostHP} HP | ${d.guestPigeon.name}: ${newGuestHP} HP`);
 
