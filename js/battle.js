@@ -143,6 +143,7 @@ const Battle = (() => {
         status: "challenged",
         hostId: myPlayerData.uid,
         guestId: targetPlayerData.uid,
+        guestName: targetPlayerData.username,
         hostPigeon: _pigeonPayload(myPlayerData),
         guestPigeon: null, // guest pigeon info added when they accept
         round: 1,
@@ -232,11 +233,15 @@ const Battle = (() => {
   ════════════════════════════════════════════════════════ */
 
   function _listenToBattle() {
-    if (_unsubscribe) _unsubscribe();
-    _unsubscribe = _battleRef.on('value', (snap) => {
+    if (_unsubscribe) {
+      _battleRef.off('value', _unsubscribe);
+      _unsubscribe = null;
+    }
+    _unsubscribe = (snap) => {
       if (!snap.exists()) return;
       _onUpdate(snap.val());
-    });
+    };
+    _battleRef.on('value', _unsubscribe);
   }
 
   function _onUpdate(d) {
