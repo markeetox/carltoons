@@ -438,8 +438,8 @@ const Battle = (() => {
 
     // Build rigs once
     if (!_rigBuilt) {
-      buildPigeonRig(document.getElementById("player-rig"),   myPigeon.traits, { idle: true });
-      buildPigeonRig(document.getElementById("opponent-rig"), opPigeon.traits, { idle: true, mirrored: true });
+      buildPigeonRig(document.getElementById("player-rig"),   myPigeon.traits, { idle: true, mirrored: true });
+      buildPigeonRig(document.getElementById("opponent-rig"), opPigeon.traits, { idle: true });
       _rigBuilt = true;
     }
 
