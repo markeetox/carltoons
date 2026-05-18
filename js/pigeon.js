@@ -176,6 +176,21 @@ function updateBondUI(bondVal) {
   label.textContent = getBondLabel(bondVal);
 }
 
+function updateLevelUI(level, xp) {
+  const fill = document.getElementById("level-fill");
+  const label = document.getElementById("level-label");
+  if (!fill || !label) return;
+
+  const currentLevelXP = GAME_CONFIG.getXPForLevel(level);
+  const nextLevelXP = GAME_CONFIG.getXPForLevel(level + 1);
+  const progress = xp - currentLevelXP;
+  const needed = nextLevelXP - currentLevelXP;
+  const pct = Math.min(100, Math.max(0, (progress / needed) * 100));
+
+  fill.style.width = pct + "%";
+  label.textContent = `Lvl ${level} (${Math.floor(pct)}%)`;
+}
+
 /* ──────────────────────────────────────────────────────────
    Stat display helpers
 ────────────────────────────────────────────────────────────── */
