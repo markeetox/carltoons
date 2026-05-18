@@ -59,7 +59,7 @@ Realtime Database requires explicit indexing for high-performance queries. Updat
     },
     "battles": {
       ".read": "auth != null",
-      ".indexOn": ["status", "guestId"],
+      ".indexOn": ["status", "guestId", "hostId"],
       "$battleId": {
         ".write": "auth != null && (!data.exists() || data.child('hostId').val() == auth.uid || data.child('guestId').val() == auth.uid || !data.child('guestId').exists())"
       }

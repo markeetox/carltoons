@@ -894,7 +894,7 @@ const App = (() => {
 
   async function _findMatch() {
     if (!_pigeon) { showToast("You need a pigeon first!"); return; }
-    document.getElementById("player-elo").textContent = _userData.elo ?? GAME_CONFIG.eloDefault;
+    document.getElementById("player-elo").textContent = _formatNumber(_userData.elo ?? GAME_CONFIG.eloDefault);
     // Clear the feed for new battle
     const feed = document.getElementById("battle-feed");
     if (feed) feed.innerHTML = "";
@@ -1078,11 +1078,23 @@ const App = (() => {
   async function _updateChallengeCount() {
     if (!_user) return;
     try {
-      const challenges = await DB.getIncomingChallenges(_user.uid);
+      const battles = await DB.getMyBattles(_user.uid);
+
+      // Count battles where it's my turn OR it's a new challenge for me
+      const myTurnCount = battles.filter(b => {
+        if (b.status === 'challenged') return b.guestId === _user.uid;
+        if (b.status === 'active') {
+          const isHost = b.hostId === _user.uid;
+          return isHost ? !b.hostMove : !b.guestMove;
+        }
+        return false;
+      }).length;
+
       const countEl = document.getElementById("challenge-count");
       if (countEl) {
-        countEl.textContent = challenges.length;
-        countEl.style.display = challenges.length > 0 ? "inline-block" : "none";
+        countEl.textContent = myTurnCount;
+        countEl.style.display = myTurnCount > 0 ? "inline-block" : "none";
+        countEl.classList.toggle("pulse", myTurnCount > 0);
       }
     } catch (err) {
       console.error("[App] Update challenge count failed:", err);
@@ -1092,40 +1104,78 @@ const App = (() => {
   async function _renderChallengesList() {
     const el = document.getElementById("challenges-list");
     if (!el) return;
-    el.innerHTML = `<p class="empty-state">Loading challenges...</p>`;
+    el.innerHTML = `<p class="empty-state">Loading...</p>`;
 
     try {
-      const list = await DB.getIncomingChallenges(_user.uid);
+      const battles = await DB.getMyBattles(_user.uid);
       el.innerHTML = "";
 
-      if (list.length === 0) {
-        el.innerHTML = `<p class="empty-state">No pending challenges</p>`;
+      if (battles.length === 0) {
+        el.innerHTML = `<p class="empty-state">No active matches or challenges</p>`;
         return;
       }
 
-      list.forEach((c) => {
+      // Sort: My Turn first, then Challenges, then Waiting for Opponent
+      battles.sort((a, b) => {
+        const turnA = _isMyTurn(a);
+        const turnB = _isMyTurn(b);
+        if (turnA && !turnB) return -1;
+        if (!turnA && turnB) return 1;
+        return 0;
+      });
+
+      battles.forEach((b) => {
+        const isMyTurn = _isMyTurn(b);
+        const isHost = b.hostId === _user.uid;
+        const opponentPigeon = isHost ? (b.guestPigeon || {name: "???"}) : b.hostPigeon;
+        const opponentName = isHost ? (b.guestId?.slice(0,6) || "???") : b.hostId.slice(0,6);
+
         const row = document.createElement("div");
-        row.className = "challenge-row";
+        row.className = "challenge-row" + (isMyTurn ? " highlight" : "");
+
+        let actionBtn = "";
+        let statusText = "";
+
+        if (b.status === "challenged") {
+          if (!isHost) {
+            statusText = "New Challenge!";
+            actionBtn = `<button class="btn-accept" data-id="${b.id}">Accept</button>`;
+          } else {
+            statusText = "Waiting for response...";
+            actionBtn = `<button class="btn-ghost btn-sm" disabled>Sent</button>`;
+          }
+        } else if (b.status === "active") {
+          statusText = isMyTurn ? "Your turn!" : "Opponent moving...";
+          actionBtn = `<button class="btn-primary btn-sm" data-id="${b.id}" data-action="resume">Resume</button>`;
+        }
+
         row.innerHTML = `
           <div class="challenge-info">
-            <span class="challenge-host">${c.hostPigeon.name}</span>
-            <span class="challenge-sub">from ${c.hostId.slice(0, 6)}...</span>
+            <span class="challenge-host">${opponentPigeon.name} <small style="font-family:var(--font-body);font-size:10px;opacity:0.6">@${opponentName}</small></span>
+            <span class="challenge-sub" style="color:${isMyTurn ? 'var(--clr-gold)' : 'inherit'}">${statusText}</span>
           </div>
-          <button class="btn-accept" data-id="${c.id}">Accept</button>
+          ${actionBtn}
         `;
         el.appendChild(row);
       });
 
-      el.querySelectorAll(".btn-accept").forEach(btn => {
+      el.querySelectorAll("button").forEach(btn => {
         btn.onclick = () => {
           const battleId = btn.dataset.id;
+          if (!battleId) return;
+
           document.getElementById("challenges-modal").classList.add("hidden");
-          Battle.acceptChallenge(battleId, {
-            uid:    _user.uid,
-            name:   _pigeon.name,
-            traits: _pigeon.traits,
-            stats:  _pigeon.stats,
-          });
+
+          if (btn.dataset.action === "resume") {
+             _resumeBattle(battleId);
+          } else {
+            Battle.acceptChallenge(battleId, {
+              uid:    _user.uid,
+              name:   _pigeon.name,
+              traits: _pigeon.traits,
+              stats:  _pigeon.stats,
+            });
+          }
           showScreen("battle");
         };
       });
@@ -1133,6 +1183,26 @@ const App = (() => {
       console.error("[App] Render challenges failed:", err);
       el.innerHTML = `<p class="empty-state">Error loading challenges</p>`;
     }
+  }
+
+  function _isMyTurn(b) {
+    if (b.status === 'challenged') return b.guestId === _user.uid;
+    if (b.status === 'active') {
+      const isHost = b.hostId === _user.uid;
+      return isHost ? !b.hostMove : !b.guestMove;
+    }
+    return false;
+  }
+
+  async function _resumeBattle(battleId) {
+    if (!_pigeon) return;
+    // We need to tell Battle to re-attach to this ID
+    Battle.resumeBattle(battleId, {
+      uid:    _user.uid,
+      name:   _pigeon.name,
+      traits: _pigeon.traits,
+      stats:  _pigeon.stats,
+    });
   }
 
   /* ──────────────────────────────────────────────────────────
