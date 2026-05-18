@@ -37,14 +37,30 @@ Copy and paste these into your **Realtime Database > Rules** tab. These rules en
 
 ### 2. Indexes
 
-Realtime Database handles most indexing automatically for the queries used in this app. However, ensure that `elo` is indexed for the leaderboard by adding it to your rules:
+Realtime Database requires explicit indexing for high-performance queries. Update your rules to include `.indexOn` for `elo` and `status`:
 
 ```json
 {
   "rules": {
     "players": {
+      ".read": "auth != null",
       ".indexOn": ["elo"],
-      ...
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "pigeons": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "battles": {
+      ".read": "auth != null",
+      ".indexOn": ["status"],
+      "$battleId": {
+        ".write": "auth != null && (!data.exists() || data.child('hostId').val() == auth.uid || data.child('guestId').val() == auth.uid || !data.child('guestId').exists())"
+      }
     }
   }
 }
