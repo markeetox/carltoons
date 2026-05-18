@@ -77,7 +77,6 @@ const DB = {
   },
   async getMyBattles(uid) {
     // RTDB limited querying: fetch by guestId, then by hostId, then merge.
-    // In a real app we might store /users/{uid}/battles/{battleId}: true
     const [asGuest, asHost] = await Promise.all([
       db.ref('battles').orderByChild('guestId').equalTo(uid).once('value'),
       db.ref('battles').orderByChild('hostId').equalTo(uid).once('value')
@@ -90,7 +89,38 @@ const DB = {
       });
     });
 
-    return Array.from(results.values()).filter(b => b.status !== 'done');
+    const battles = Array.from(results.values());
+    const now = Date.now();
+    const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+
+    const active = [];
+    for (const b of battles) {
+      if (b.status === 'done') continue;
+
+      // Handle 2-day timeout
+      const last = b.lastActivity || b.createdAt || now;
+      if (now - last > TWO_DAYS_MS) {
+        // Determine winner: last player who interacted.
+        // If guestMove exists but host hasn't moved, guest was last.
+        // If both moved, host resolves (shouldn't happen with both, but fallback to host).
+        let winnerId = b.hostId;
+        if (b.status === 'challenged') winnerId = b.hostId; // guest never accepted
+        else if (b.guestMove && !b.hostMove) winnerId = b.guestId;
+        else if (b.hostMove && !b.guestMove) winnerId = b.hostId;
+
+        try {
+          await db.ref(`battles/${b.id}`).update({
+            status: 'done',
+            winnerId,
+            fullLog: [...(b.fullLog || []), "⏱️ Battle ended due to 2 days of inactivity."]
+          });
+        } catch (_) {}
+        continue; // Filter out from list
+      }
+      active.push(b);
+    }
+
+    return active;
   },
   async getBattle(battleId) {
     const snap = await db.ref(`battles/${battleId}`).once('value');

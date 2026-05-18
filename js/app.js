@@ -1092,7 +1092,7 @@ const App = (() => {
 
       const countEl = document.getElementById("challenge-count");
       if (countEl) {
-        countEl.textContent = myTurnCount;
+        countEl.textContent = "!";
         countEl.style.display = myTurnCount > 0 ? "inline-block" : "none";
         countEl.classList.toggle("pulse", myTurnCount > 0);
       }
@@ -1128,7 +1128,6 @@ const App = (() => {
         const isMyTurn = _isMyTurn(b);
         const isHost = b.hostId === _user.uid;
         const opponentPigeon = isHost ? (b.guestPigeon || {name: "???"}) : b.hostPigeon;
-        const opponentName = isHost ? (b.guestId?.slice(0,6) || "???") : b.hostId.slice(0,6);
 
         const row = document.createElement("div");
         row.className = "challenge-row" + (isMyTurn ? " highlight" : "");
@@ -1151,7 +1150,7 @@ const App = (() => {
 
         row.innerHTML = `
           <div class="challenge-info">
-            <span class="challenge-host">${opponentPigeon.name} <small style="font-family:var(--font-body);font-size:10px;opacity:0.6">@${opponentName}</small></span>
+            <span class="challenge-host">${opponentPigeon.name}</span>
             <span class="challenge-sub" style="color:${isMyTurn ? 'var(--clr-gold)' : 'inherit'}">${statusText}</span>
           </div>
           ${actionBtn}

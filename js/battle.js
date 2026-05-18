@@ -120,6 +120,19 @@ const Battle = (() => {
   async function sendChallenge(targetPlayerData, myPlayerData) {
     try {
       _myUid = myPlayerData.uid;
+
+      // Ensure only one active challenge/battle between these players
+      const existing = await DB.getMyBattles(_myUid);
+      const duplicate = existing.find(b =>
+        (b.hostId === _myUid && b.guestId === targetPlayerData.uid) ||
+        (b.hostId === targetPlayerData.uid && b.guestId === _myUid)
+      );
+
+      if (duplicate) {
+        showToast("Already a pending match with this player!");
+        return;
+      }
+
       _myRole = "host";
       _battleOver = false;
       _rigBuilt = false;
@@ -254,8 +267,8 @@ const Battle = (() => {
     // "active" or "resolving"
     _renderBattleUI(d);
 
-    // Host resolves when both moves are in
-    if (d.status === "active" && d.hostMove && d.guestMove && _myRole === "host") {
+    // Either player can resolve when both moves are in (transactional)
+    if (d.status === "active" && d.hostMove && d.guestMove) {
       _resolveRound(d);
     }
 
