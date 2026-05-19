@@ -80,10 +80,10 @@ const PIGEON_CONFIG = {
   // ─────────────────────────────────────────────────────────
 
   imagePath: (layer, variant) =>
-    `assets/pigeon/${layer}/${layer}_${variant}.png`,
+    `/assets/pigeon/${layer}/${layer}_${variant}.png`,
 
   eggPath: (state) =>
-    `assets/egg/${state}.png`,
+    `/assets/egg/${state}.png`,
 };
 
 /* ── Firebase init ───────────────────────────────────────── */
