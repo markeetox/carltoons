@@ -315,7 +315,7 @@ input { font-family: var(--font-body); }
 .pigeon-rig.victory { animation: victory-hop .9s ease-in-out; }
 
 /* ── Mirrored (opponent in battle) ── */
-.pigeon-rig.mirrored .p-layer { transform: translate(-50%, -50%) scaleX(-1); }
+.pigeon-rig.mirrored { transform: scaleX(-1); }
 
 /* ── Silhouette (hatch reveal) ── */
 .pigeon-rig.silhouette .p-layer { filter: brightness(0); }
@@ -822,7 +822,7 @@ input { font-family: var(--font-body); }
    BATTLE / TOONISEUM SCREEN
    ════════════════════════════════════════════════════════════ */
 .arena {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: flex-end; justify-content: center;
   position: relative;
   aspect-ratio: 1 / 1;
   width: calc(100% - 32px);
@@ -842,7 +842,8 @@ input { font-family: var(--font-body); }
   position: relative;
   z-index: 2;
   overflow: hidden;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-bottom: 20px;
 }
 .arena .pigeon-rig {
   --rig-size: 220px;
