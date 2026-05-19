@@ -47,14 +47,16 @@ self.addEventListener("fetch", (e) => {
   }
 
   // Cache-first for pigeon PNG assets
-  if (url.pathname.startsWith("/assets/")) {
+  if (url.pathname.includes("/assets/")) {
     e.respondWith(
       caches.match(e.request).then((cached) => {
         if (cached) return cached;
         return fetch(e.request).then((res) => {
-          // Clone BEFORE consuming — fixes "body already used" error
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          // Only cache successful responses
+          if (res && res.status === 200) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          }
           return res;
         });
       })

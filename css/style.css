@@ -315,10 +315,11 @@ input { font-family: var(--font-body); }
 .pigeon-rig.victory { animation: victory-hop .9s ease-in-out; }
 
 /* ── Mirrored (opponent in battle) ── */
-.pigeon-rig.mirrored { transform: translate(-50%, -50%) scaleX(-1); }
+.pigeon-rig.mirrored .p-layer { transform: translate(-50%, -50%) scaleX(-1); }
 
 /* ── Silhouette (hatch reveal) ── */
 .pigeon-rig.silhouette .p-layer { filter: brightness(0); }
+.pigeon-silhouette { min-height: 300px; display: flex; align-items: center; justify-content: center; }
 
 /* ════════════════════════════════════════════════════════════
    LOGIN SCREEN
@@ -409,7 +410,7 @@ input { font-family: var(--font-body); }
 }
 .nest-bg {
   position: absolute; inset: 0;
-  background-image: url('../assets/egg/nest_bg.png');
+  background-image: url('/assets/egg/nest_bg.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -638,9 +639,9 @@ input { font-family: var(--font-body); }
   align-items: center; justify-content: center;
   padding: 0;
   position: relative;
-  aspect-ratio: 1 / 1;
   width: calc(100% - 32px);
   max-width: 450px;
+  min-height: 400px;
   margin: var(--sp-gap) auto;
   background: var(--clr-bg);
   border-radius: var(--r-lg);
@@ -821,12 +822,14 @@ input { font-family: var(--font-body); }
    BATTLE / TOONISEUM SCREEN
    ════════════════════════════════════════════════════════════ */
 .arena {
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   position: relative;
   aspect-ratio: 1 / 1;
-  width: 100%;
-  margin: 0 0 var(--sp-gap);
-  background-image: url('../assets/bg/war.png');
+  width: calc(100% - 32px);
+  margin: 0 auto var(--sp-gap);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  background-image: url('/assets/bg/war.png');
   background-size: cover;
   background-position: center;
   border-bottom: 2px solid var(--clr-border);
@@ -839,8 +842,11 @@ input { font-family: var(--font-body); }
   position: relative;
   z-index: 2;
   overflow: hidden;
-  justify-content: flex-end;
-  padding-bottom: 40px;
+  justify-content: center;
+}
+.arena .pigeon-rig {
+  --rig-size: 220px;
+  margin-bottom: -40px;
 }
 .player-side { align-items: flex-end; text-align: right; padding-right: 15px; }
 .opponent-side { align-items: flex-start; text-align: left; padding-left: 15px; }
@@ -1275,11 +1281,11 @@ input { font-family: var(--font-body); }
 .mood-card.rehab  { border-top: 4px solid #eab308; }
 
 .mood-pigeon-wrap {
-  width: 160px; height: 160px;
+  width: 220px; height: 220px;
   position: relative; flex-shrink: 0;
 }
 .mood-pigeon-wrap .pigeon-rig {
-  width: 160px; height: 160px;
+  width: 220px; height: 220px;
 }
 .mood-name {
   font-family: var(--font-display);
@@ -1339,12 +1345,9 @@ input { font-family: var(--font-body); }
 /* ════════════════════════════════════════════════════════════
    PIGEON BACKGROUND
    ════════════════════════════════════════════════════════════ */
-.pigeon-scene {
-  position: relative;
-}
 .pigeon-bg {
   position: absolute; inset: 0;
-  background-image: url('../assets/bg/home_bg.png');
+  background-image: url('/assets/bg/home_bg.png');
   background-size: cover;
   background-position: center;
   border-radius: var(--r-lg);
