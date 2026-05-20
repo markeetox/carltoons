@@ -80,7 +80,7 @@ input { font-family: var(--font-body); }
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 480px;
+  max-width: 540px;
   display: flex; flex-direction: column;
   padding-bottom: var(--nav-h);
   overflow-y: auto;
@@ -137,7 +137,7 @@ input { font-family: var(--font-body); }
 .bottom-nav {
   position: fixed; bottom: 0;
   left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 480px;
+  width: 100%; max-width: 540px;
   height: var(--nav-h);
   background: var(--clr-bg);
   border-top: 1px solid var(--clr-border);
@@ -822,10 +822,11 @@ input { font-family: var(--font-body); }
    BATTLE / TOONISEUM SCREEN
    ════════════════════════════════════════════════════════════ */
 .arena {
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex;
   position: relative;
   aspect-ratio: 1 / 1;
   width: calc(100% - 32px);
+  max-height: 80vh;
   margin: 0 auto var(--sp-gap);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
@@ -836,21 +837,28 @@ input { font-family: var(--font-body); }
   overflow: hidden;
 }
 .arena-side {
-  display: flex; flex-direction: column;
-  gap: 8px; flex: 1;
-  padding: var(--sp-sm);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: var(--sp-md);
   position: relative;
   z-index: 2;
-  overflow: hidden;
-  justify-content: flex-end;
-  padding-bottom: 20px;
+  justify-content: space-between;
+  align-items: center;
 }
+.arena-status {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.player-side .arena-status { align-items: flex-end; text-align: right; }
+.opponent-side .arena-status { align-items: flex-start; text-align: left; }
+
 .arena .pigeon-rig {
   --rig-size: 220px;
-  margin-bottom: -40px;
+  margin-bottom: 0;
 }
-.player-side { align-items: flex-end; text-align: right; padding-right: 15px; }
-.opponent-side { align-items: flex-start; text-align: left; padding-left: 15px; }
 
 .arena-name {
   font-family: var(--font-display); font-size: 14px;
