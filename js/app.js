@@ -51,7 +51,7 @@ function _isActionLocked(uid, action) {
   } catch (_) { return false; }
 }
 
-function _syncLocksFromFirestore(uid, pigeonData) {
+function _syncLocksFromDB(uid, pigeonData) {
   // On load, sync localStorage with Firestore so they agree.
   // Firestore always wins — if Firestore says used, lock it.
   if (!pigeonData) return;
@@ -362,7 +362,7 @@ const App = (() => {
       if (data) {
         _pigeon = data;
         // Sync localStorage gates so refresh can never bypass them
-        _syncLocksFromFirestore(_user.uid, _pigeon);
+        _syncLocksFromDB(_user.uid, _pigeon);
       }
     } catch (err) {
       console.error("[App] Load pigeon failed:", err);
