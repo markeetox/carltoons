@@ -125,5 +125,16 @@ const DB = {
   async getBattle(battleId) {
     const snap = await db.ref(`battles/${battleId}`).once('value');
     return snap.exists() ? { id: snap.key, ...snap.val() } : null;
+  },
+  async awardEarthworm(uid) {
+    if (!uid) return;
+    try {
+      const ref = db.ref(`players/${uid}/earthworms`);
+      await ref.transaction((current) => {
+        return (current || 0) + 1;
+      });
+    } catch (err) {
+      console.error("[DB] Failed to award earthworm:", err);
+    }
   }
 };
