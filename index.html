@@ -304,6 +304,42 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════
+       SCREEN: WORLD (exploration / rumble mode)
+  ══════════════════════════════════════════════════════ -->
+  <div id="screen-world" class="screen">
+    <div class="top-bar">
+      <span class="top-bar-title">The Wilds</span>
+      <div class="top-bar-right">
+        <div class="world-resources">
+          <span class="res-item"><i class="fa-solid fa-worm"></i> <span id="world-worms">0</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="world-container" id="world-container">
+      <canvas id="world-canvas"></canvas>
+
+      <!-- Joystick UI -->
+      <div id="joystick-zone">
+        <div id="joystick-base">
+          <div id="joystick-stick"></div>
+        </div>
+      </div>
+
+      <!-- HUD overlays -->
+      <div class="world-hud-top">
+        <div class="party-list" id="party-list">
+          <!-- Small pigeon icons for party -->
+        </div>
+      </div>
+
+      <div class="world-guide">
+        <p><i class="fa-solid fa-person-walking"></i> Move to find worms & rescue birds</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
        SCREEN: TOONISEUM (battle arena)
   ══════════════════════════════════════════════════════ -->
   <div id="screen-battle" class="screen">
@@ -525,6 +561,10 @@
       <i class="fa-solid fa-house"></i>
       <span>Home</span>
     </button>
+    <button class="nav-btn" data-screen="world">
+      <i class="fa-solid fa-map"></i>
+      <span>Explore</span>
+    </button>
     <button class="nav-btn" data-screen="battle">
       <i class="fa-solid fa-skull-crossbones"></i>
       <span>Battle</span>
@@ -569,6 +609,7 @@
   <script src="/js/pigeon.js"></script>
   <script src="/js/hatch.js"></script>
   <script src="/js/battle.js"></script>
+  <script src="/js/world.js"></script>
   <script src="/js/messages.js"></script>
   <script src="/js/app.js"></script>
 </body>

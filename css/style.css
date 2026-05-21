@@ -1572,6 +1572,114 @@ input { font-family: var(--font-body); }
 }
 
 /* ════════════════════════════════════════════════════════════
+   WORLD MODE (Rumble Heroes style)
+   ════════════════════════════════════════════════════════════ */
+.world-container {
+  flex: 1;
+  position: relative;
+  background: #3d7a5a; /* Grass color */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#world-canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* Joystick */
+#joystick-zone {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 120px;
+  z-index: 100;
+  pointer-events: all;
+  touch-action: none;
+}
+#joystick-base {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  position: relative;
+}
+#joystick-stick {
+  width: 50px;
+  height: 50px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Resource UI */
+.world-resources {
+  display: flex;
+  gap: 12px;
+}
+.res-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.2);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: #fff;
+}
+
+/* HUD */
+.world-hud-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+}
+.party-list {
+  display: flex;
+  gap: 6px;
+}
+.party-member-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--clr-surface2);
+  border: 1.5px solid var(--clr-gold);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.world-guide {
+  position: absolute;
+  bottom: 12px;
+  width: 100%;
+  text-align: center;
+  pointer-events: none;
+}
+.world-guide p {
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 11px;
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  backdrop-filter: blur(2px);
+}
+
+/* ════════════════════════════════════════════════════════════
    SHARE BOX (TEMP)
    ════════════════════════════════════════════════════════════ */
 .share-box-temp {

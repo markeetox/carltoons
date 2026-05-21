@@ -42,7 +42,8 @@ test('Verify battle arena layout', async ({ page }) => {
   // Verify alignment
   const arenaSide = page.locator('.arena-side').first();
   const status = arenaSide.locator('.arena-status');
-  const rig = arenaSide.locator('.pigeon-rig');
+  // Use id selector to avoid strict mode violation if nested rigs exist
+  const rig = arenaSide.locator('#opponent-rig');
 
   // Status should be above Rig
   const statusBox = await status.boundingBox();

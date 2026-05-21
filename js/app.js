@@ -18,6 +18,13 @@ function showScreen(name) {
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.screen === name);
   });
+
+    // World mode lifecycle
+    if (name === "world") {
+      World.start();
+    } else {
+      if (typeof World !== 'undefined' && World.stop) World.stop();
+    }
 }
 
 /* ── Utility: toast notification ── */
@@ -142,6 +149,7 @@ const App = (() => {
     _initChallenges();
     Hatch.init();
     Battle.init();
+    World.init();
 
     // Mood popup — use document-level delegation so it always fires
     // regardless of z-index stacking or timing
@@ -1457,7 +1465,22 @@ const App = (() => {
     return streak;
   }
 
-  return { boot, saveNewPigeon, recordBattleResult };
+  /* ──────────────────────────────────────────────────────────
+     WORLD INTEGRATION
+  ────────────────────────────────────────────────────────────── */
+  async function addWorm() {
+    if (!_userData) return;
+    const newCount = (_userData.earthworms ?? 0) + 1;
+    _userData.earthworms = newCount;
+    // Silent update to Firebase
+    DB.updatePlayer(_user.uid, { earthworms: newCount });
+  }
+
+  function getWorms() {
+    return _userData?.earthworms ?? 0;
+  }
+
+  return { boot, saveNewPigeon, recordBattleResult, addWorm, getWorms };
 })();
 
 /* ── Start the app ── */

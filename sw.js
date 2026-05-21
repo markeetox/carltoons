@@ -12,6 +12,7 @@ const SHELL = [
   "/js/pigeon.js",
   "/js/hatch.js",
   "/js/battle.js",
+  "/js/world.js",
   "/js/app.js",
   "/manifest.json",
 ];
