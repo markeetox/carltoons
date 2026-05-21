@@ -112,6 +112,15 @@ const App = (() => {
      BOOT
   ────────────────────────────────────────────────────────────── */
   function boot() {
+    // Capture referral from URL ?ref=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    if (ref) {
+      sessionStorage.setItem('pigeon_ref', ref);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     // Auth form first — always available on login screen
     _initAuthForm();
 
@@ -156,6 +165,13 @@ const App = (() => {
           document.getElementById("bottom-nav").classList.remove("hidden");
         }
         return;
+      }
+    });
+
+    // Share button
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#btn-home-share")) {
+        _sharePigeon();
       }
     });
 
@@ -342,9 +358,17 @@ const App = (() => {
       battleLog:    [],
       hasPigeon:    false,
       pigeonId:     null,
+      earthworms:   0,
     };
     try {
       await DB.setPlayer(_user.uid, _userData);
+
+      // Award earthworm to referrer
+      const refUid = sessionStorage.getItem('pigeon_ref');
+      if (refUid && refUid !== _user.uid) {
+        await DB.awardEarthworm(refUid);
+        sessionStorage.removeItem('pigeon_ref');
+      }
     } catch (err) {
       console.error("[App] Create player failed:", err);
       showToast("Failed to create profile. Check connection.");
@@ -850,6 +874,9 @@ const App = (() => {
     const nameEl = document.getElementById("profile-name");
     if (nameEl) nameEl.textContent = _pigeon.name ?? "—";
 
+    const wormsEl = document.getElementById("profile-earthworms");
+    if (wormsEl) wormsEl.textContent = _userData.earthworms ?? 0;
+
     const subEl = document.getElementById("profile-sub");
     if (subEl) subEl.textContent = `${(_userData.battleLog ?? []).length} battles`;
 
@@ -960,6 +987,91 @@ const App = (() => {
   /* ──────────────────────────────────────────────────────────
      NAV
   ────────────────────────────────────────────────────────────── */
+  /* ──────────────────────────────────────────────────────────
+     SHARING
+  ────────────────────────────────────────────────────────────── */
+  async function _sharePigeon() {
+    if (!_pigeon) return;
+
+    const btn = document.getElementById("btn-home-share");
+    const originalIcon = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-camera fa-spin"></i>';
+
+    try {
+      // Create a temporary container for the shareable card
+      const shareBox = document.createElement("div");
+      shareBox.className = "share-box-temp";
+
+      // We want: Pigeon scene + Stats
+      shareBox.innerHTML = `
+        <div class="pigeon-scene" style="margin-bottom:0">
+          <div class="pigeon-bg"></div>
+          <div class="pigeon-rig idle" id="share-rig"></div>
+        </div>
+        <div class="share-stats">
+          <h2 class="share-name">${_pigeon.name}</h2>
+          <p class="share-level">Level ${_pigeon.level}</p>
+          <div class="quick-stats" id="share-quick-stats"></div>
+        </div>
+        <div class="share-footer">
+          <img src="/assets/logo.png" style="height:24px" />
+          <span>tooniseum.com</span>
+        </div>
+      `;
+      document.body.appendChild(shareBox);
+
+      // Render the rig and stats in the temp box
+      const shareRig = shareBox.querySelector("#share-rig");
+      buildPigeonRig(shareRig, _pigeon.traits, { idle: true });
+      renderStatChips("share-quick-stats", _pigeon.stats);
+
+      // Wait a bit for images to be ready
+      await new Promise(r => setTimeout(r, 500));
+
+      const canvas = await html2canvas(shareBox, {
+        backgroundColor: "#1a1a1a",
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+
+      shareBox.remove();
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      const file = new File([blob], 'my_pigeon.png', { type: 'image/png' });
+
+      const shareUrl = `${window.location.origin}${window.location.pathname}?ref=${_user.uid}`;
+      const shareData = {
+        title: `Meet ${_pigeon.name}!`,
+        text: `Check out my pigeon on Pigeons by Carltoons! Join me and raise your own.`,
+        url: shareUrl,
+        files: [file]
+      };
+
+      if (navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback for desktop/unsupported browsers
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'my_pigeon.png';
+        link.href = dataUrl;
+        link.click();
+
+        // Also copy link to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        showToast("Image saved & Invite link copied!");
+      }
+    } catch (err) {
+      console.error("[App] Share failed:", err);
+      showToast("Sharing failed.");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalIcon;
+    }
+  }
+
   function _initNav() {
     document.querySelectorAll(".nav-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
