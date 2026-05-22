@@ -6,30 +6,37 @@
 const DB = {
   // players/{uid}
   async getPlayer(uid) {
+    if (!uid) return null;
     const snap = await db.ref(`players/${uid}`).once('value');
     return snap.exists() ? snap.val() : null;
   },
   async setPlayer(uid, data) {
+    if (!uid) return;
     await db.ref(`players/${uid}`).set(data);
   },
   async updatePlayer(uid, data) {
+    if (!uid) return;
     await db.ref(`players/${uid}`).update(data);
   },
 
   // pigeons/{uid}
   async getPigeon(uid) {
+    if (!uid) return null;
     const snap = await db.ref(`pigeons/${uid}`).once('value');
     return snap.exists() ? snap.val() : null;
   },
   async setPigeon(uid, data) {
+    if (!uid) return;
     await db.ref(`pigeons/${uid}`).set(data);
   },
   async updatePigeon(uid, data) {
+    if (!uid) return;
     await db.ref(`pigeons/${uid}`).update(data);
   },
 
   // battles
   async getWaitingBattles() {
+    if (!auth.currentUser) return [];
     // RTDB doesn't have multiple inequality filters well,
     // but we can query by status.
     const snap = await db.ref('battles')
@@ -45,11 +52,13 @@ const DB = {
     return battles;
   },
   async createBattle(data) {
+    if (!auth.currentUser) return null;
     const ref = db.ref('battles').push();
     await ref.set(data);
     return ref;
   },
   async getLeaderboard() {
+    if (!auth.currentUser) return [];
     const snap = await db.ref('players')
       .orderByChild('elo')
       .limitToLast(10)
@@ -62,6 +71,7 @@ const DB = {
     return list.reverse(); // Highest ELO first
   },
   async searchPlayers(query) {
+    if (!auth.currentUser) return [];
     const snap = await db.ref('players')
       .orderByChild('username')
       .startAt(query)
@@ -76,6 +86,7 @@ const DB = {
     return list;
   },
   async getMyBattles(uid) {
+    if (!uid) return [];
     // RTDB limited querying: fetch by guestId, then by hostId, then merge.
     const [asGuest, asHost] = await Promise.all([
       db.ref('battles').orderByChild('guestId').equalTo(uid).once('value'),

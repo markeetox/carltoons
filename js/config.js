@@ -50,11 +50,11 @@ const PIGEON_CONFIG = {
   // Variant count PER layer — how many PNG files you have for each
   variants: {
     leg_far:  6,   // leg_far_1.png  … leg_far_6.png
-    tail:     6,   // tail_1.png     … tail_6.png
-    torso:    6,   // torso_1.png    … torso_6.png
+    tail:     7,   // tail_1.png     … tail_7.png
+    torso:    8,   // torso_1.png    … torso_8.png
     leg_near: 6,   // leg_near_1.png … leg_near_6.png
-    head:     9,   // head_1.png     … head_9.png
-    wings:    6,   // wings_1.png    … wings_6.png
+    head:     16,  // head_1.png     … head_16.png
+    wings:    8,   // wings_1.png    … wings_8.png
   },
 
   // ─────────────────────────────────────────────────────────
