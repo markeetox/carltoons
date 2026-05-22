@@ -183,6 +183,16 @@ const App = (() => {
       }
     });
 
+    // Handle iOS/PWA backgrounding issues: reconnect when app becomes visible
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        try {
+          db.goOnline();
+          console.log("[App] Reconnecting to Firebase...");
+        } catch (_) {}
+      }
+    });
+
     // Logout — always in the nav, works from any screen
     document.addEventListener("click", async (e) => {
       if (!e.target.closest("#btn-logout")) return;

@@ -266,7 +266,6 @@ const Battle = (() => {
 
     if (d.status === "active" && !_matchFoundShown) {
       _showMatchFound(d);
-      return;
     }
 
     // "active" or "resolving"
