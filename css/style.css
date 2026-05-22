@@ -63,11 +63,12 @@ body {
   overscroll-behavior: none;
   user-select: none;
   overflow-x: hidden;
+  touch-action: none;
 }
 
 /* centering handled in .screen block below */
 img { display: block; }
-button { cursor: pointer; border: none; background: none; font-family: var(--font-body); }
+button { cursor: pointer; border: none; background: none; font-family: var(--font-body); touch-action: manipulation; }
 input { font-family: var(--font-body); }
 
 /* ════════════════════════════════════════════════════════════
@@ -90,6 +91,7 @@ input { font-family: var(--font-body); }
   z-index: 1;
   box-shadow: 0 0 0 1px var(--clr-border);
   background: var(--clr-surface);
+  touch-action: pan-y;
 }
 .screen.active {
   opacity: 1; pointer-events: all;
@@ -207,6 +209,10 @@ input { font-family: var(--font-body); }
    Container is square; change --rig-size to resize everywhere.
    ════════════════════════════════════════════════════════════ */
 :root { --rig-size: 300px; }
+
+@media (max-width: 480px) {
+  :root { --rig-size: 240px; }
+}
 
 .pigeon-rig {
   position: relative;
@@ -401,7 +407,7 @@ input { font-family: var(--font-body); }
   position: relative;
   aspect-ratio: 1 / 1;
   width: calc(100% - 32px);
-  margin: var(--sp-gap) auto;
+  margin: var(--sp-md) auto;
   background: var(--clr-bg);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
@@ -480,7 +486,7 @@ input { font-family: var(--font-body); }
   flex-shrink: 0;
   background: var(--clr-bg);
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -641,8 +647,8 @@ input { font-family: var(--font-body); }
   position: relative;
   width: calc(100% - 32px);
   max-width: 450px;
-  min-height: 400px;
-  margin: var(--sp-gap) auto;
+  min-height: 340px;
+  margin: var(--sp-md) auto;
   background: var(--clr-bg);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
@@ -688,7 +694,7 @@ input { font-family: var(--font-body); }
   padding: var(--sp-md);
   background: var(--clr-bg);
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -718,7 +724,7 @@ input { font-family: var(--font-body); }
   padding: var(--sp-md);
   background: var(--clr-bg);
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -772,7 +778,7 @@ input { font-family: var(--font-body); }
 
 .stat-card {
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   background: var(--clr-bg);
   border: 1px solid var(--clr-border);
   border-radius: var(--r-lg); padding: var(--sp-md);
@@ -797,7 +803,7 @@ input { font-family: var(--font-body); }
   padding: var(--sp-md);
   background: var(--clr-bg);
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -841,7 +847,7 @@ input { font-family: var(--font-body); }
   aspect-ratio: 1 / 1;
   width: calc(100% - 32px);
   max-height: 80vh;
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   background-image: url('/assets/bg/war.png');
@@ -919,7 +925,7 @@ input { font-family: var(--font-body); }
   padding: var(--sp-sm) var(--sp-md);
   background: var(--clr-bg);
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -939,7 +945,7 @@ input { font-family: var(--font-body); }
   gap: var(--sp-sm); padding: var(--sp-md);
   background: var(--clr-bg);
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -1342,7 +1348,7 @@ input { font-family: var(--font-body); }
   padding: var(--sp-md);
   background: var(--clr-bg);
   width: calc(100% - 32px);
-  margin: 0 auto var(--sp-gap);
+  margin: 0 auto var(--sp-md);
   border-radius: var(--r-lg);
   border: 1px solid var(--clr-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -1491,7 +1497,7 @@ input { font-family: var(--font-body); }
   border-radius: var(--r-lg);
   padding: var(--sp-md);
   width: calc(100% - 32px);
-  margin: 0 auto;
+  margin: 0 auto var(--sp-md);
   display: flex; flex-direction: column; gap: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
@@ -1573,10 +1579,12 @@ input { font-family: var(--font-body); }
 
 /* ════════════════════════════════════════════════════════════
    SHARE BOX (TEMP)
+   Modified for 1:1 square ratio for social media
    ════════════════════════════════════════════════════════════ */
 .share-box-temp {
   position: fixed; left: -9999px; top: -9999px;
-  width: 400px;
+  width: 500px;
+  height: 500px;
   background: #1a1a1a;
   color: #fff;
   display: flex; flex-direction: column;
@@ -1584,33 +1592,33 @@ input { font-family: var(--font-body); }
   border-radius: 0;
 }
 .share-box-temp .pigeon-scene {
-  width: 100%; border: none; border-radius: 0; margin: 0;
+  width: 100%; height: 100%; border: none; border-radius: 0; margin: 0;
   background: #222;
+  flex: 1;
 }
 .share-box-temp .pigeon-bg { border-radius: 0; }
-.share-box-temp .pigeon-rig { --rig-size: 320px; }
-.share-stats {
+.share-box-temp .pigeon-rig { --rig-size: 380px; }
+.share-stats-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
   padding: 24px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .share-name {
-  font-family: var(--font-display); font-size: 32px;
+  font-family: var(--font-display); font-size: 42px;
   color: var(--clr-gold);
+  text-shadow: 0 4px 8px rgba(0,0,0,0.5);
 }
 .share-level {
-  font-family: var(--font-display); font-size: 18px;
-  opacity: 0.8;
-}
-.share-box-temp .quick-stats {
-  width: 100%; border: none; background: transparent;
-  padding: 0; margin: 0; box-shadow: none;
-}
-.share-box-temp .stat-chip {
-  background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.1);
+  font-family: var(--font-display); font-size: 22px;
+  color: #fff;
+  opacity: 0.9;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 .share-footer {
-  padding: 16px 24px 24px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  font-family: var(--font-display); font-size: 14px; opacity: 0.6;
+  position: absolute; top: 24px; right: 24px;
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-display); font-size: 18px; color: #fff;
+  opacity: 0.8;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }

@@ -1005,18 +1005,16 @@ const App = (() => {
 
       // We want: Pigeon scene + Stats
       shareBox.innerHTML = `
-        <div class="pigeon-scene" style="margin-bottom:0">
+        <div class="pigeon-scene">
           <div class="pigeon-bg"></div>
           <div class="pigeon-rig idle" id="share-rig"></div>
-        </div>
-        <div class="share-stats">
-          <h2 class="share-name">${_pigeon.name}</h2>
-          <p class="share-level">Level ${_pigeon.level}</p>
-          <div class="quick-stats" id="share-quick-stats"></div>
-        </div>
-        <div class="share-footer">
-          <img src="/assets/logo.png" style="height:24px" />
-          <span>tooniseum.com</span>
+          <div class="share-stats-overlay">
+            <h2 class="share-name">${_pigeon.name}</h2>
+            <p class="share-level">Lvl ${_pigeon.level}</p>
+          </div>
+          <div class="share-footer">
+            <span>coo.wutju.com</span>
+          </div>
         </div>
       `;
       document.body.appendChild(shareBox);
@@ -1024,7 +1022,6 @@ const App = (() => {
       // Render the rig and stats in the temp box
       const shareRig = shareBox.querySelector("#share-rig");
       buildPigeonRig(shareRig, _pigeon.traits, { idle: true });
-      renderStatChips("share-quick-stats", _pigeon.stats);
 
       // Wait a bit for images to be ready
       await new Promise(r => setTimeout(r, 500));
@@ -1300,7 +1297,14 @@ const App = (() => {
       });
     } catch (err) {
       console.error("[App] Render challenges failed:", err);
-      el.innerHTML = `<p class="empty-state">Error loading challenges</p>`;
+      const isPermissionError = err.message?.includes("permissions") || err.code === "permission-denied";
+      el.innerHTML = `
+        <div class="empty-state" style="flex-direction:column;gap:8px;text-align:center">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>Challenges unavailable</span>
+          ${isPermissionError ? '<span style="font-size:11px;opacity:0.7">Missing database permissions or indexes.</span>' : ''}
+        </div>
+      `;
     }
   }
 
