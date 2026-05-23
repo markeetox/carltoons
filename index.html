@@ -263,6 +263,37 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════
+       SCREEN: THE NEST
+  ══════════════════════════════════════════════════════ -->
+  <div id="screen-nest" class="screen">
+    <div class="top-bar">
+      <span class="top-bar-title">The Nest</span>
+      <div class="top-bar-right">
+        <span class="streak-badge"><i class="fa-solid fa-fire"></i> <span id="nest-streak">0</span></span>
+      </div>
+    </div>
+
+    <div class="nest-content">
+      <p class="nest-intro">You need a <strong>5-day streak</strong> to breed. Keep your streak to keep your nest full.</p>
+
+      <div id="nest-slots" class="nest-slots">
+        <!-- Up to 3 slots -->
+      </div>
+
+      <div id="breed-section" class="breed-section hidden">
+        <div class="breed-card">
+          <i class="fa-solid fa-egg breed-icon"></i>
+          <h3>Breed New Egg</h3>
+          <p>Inherit traits from <span id="parent-name">your pigeon</span>.</p>
+          <button class="btn-primary" id="btn-breed">
+            <i class="fa-solid fa-heart"></i> Breed Egg
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
        SCREEN: PROFILE
   ══════════════════════════════════════════════════════ -->
   <div id="screen-profile" class="screen">
@@ -529,6 +560,10 @@
     <button class="nav-btn active" data-screen="home">
       <i class="fa-solid fa-house"></i>
       <span>Home</span>
+    </button>
+    <button class="nav-btn" data-screen="nest" id="nav-nest">
+      <i class="fa-solid fa-kiwi-bird"></i>
+      <span>Nest</span>
     </button>
     <button class="nav-btn" data-screen="battle">
       <i class="fa-solid fa-skull-crossbones"></i>

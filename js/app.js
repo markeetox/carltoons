@@ -139,6 +139,7 @@ const App = (() => {
     _initNav();
     _initEggActions();
     _initCareActions();
+    _initNestActions();
     _initBattleButtons();
     _initChallenges();
     Hatch.init();
@@ -370,8 +371,8 @@ const App = (() => {
         _userData = data;
       }
 
-      await _loadPigeon();
-      _recordDailyLogin();
+      await _recordDailyLogin(); // streak calc needs this updated first
+      await _loadPigeons();
       _routeAfterLoad();
     } catch (err) {
       console.error("[App] Load player failed:", err);
@@ -389,7 +390,8 @@ const App = (() => {
       elo:          GAME_CONFIG.eloDefault,
       battleLog:    [],
       hasPigeon:    false,
-      pigeonId:     null,
+      activePigeonId: null,
+      lastSwitchDate: null,
       earthworms:   0,
     };
     try {
@@ -408,36 +410,41 @@ const App = (() => {
   }
 
   /* ──────────────────────────────────────────────────────────
-     LOAD PIGEON from Realtime DB
-     Document path: pigeons/{uid}  (one pigeon per player for now)
+     LOAD PIGEONS from Realtime DB
+     Document path: pigeons/{uid}
   ────────────────────────────────────────────────────────────── */
-  async function _loadPigeon() {
+  async function _loadPigeons() {
     try {
-      // Even if hasPigeon is false, they might have an unhatched egg (incubation progress)
-      const data = await DB.getPigeon(_user.uid);
-      if (data) {
-        _pigeon = data;
-        // Sync localStorage gates so refresh can never bypass them
+      const all = await DB.getPigeons(_user.uid);
+      const activeId = _userData.activePigeonId || _user.uid;
+      _pigeon = all.find(p => p.id === activeId) || all[0] || null;
+
+      if (_pigeon) {
         _syncLocksFromDB(_user.uid, _pigeon);
       }
     } catch (err) {
-      console.error("[App] Load pigeon failed:", err);
-      // No toast here as it's a silent background load,
-      // but Step 2 will add more robust error handling.
+      console.error("[App] Load pigeons failed:", err);
     }
   }
 
   /* ──────────────────────────────────────────────────────────
-     RECORD DAILY LOGIN
+     RECORD DAILY LOGIN & STREAK
   ────────────────────────────────────────────────────────────── */
   async function _recordDailyLogin() {
     try {
       const today = todayStr();
       const dates = _userData.loginDates ?? [];
-      if (dates.includes(today)) return; // already counted
+      if (dates.includes(today)) {
+        _checkNestValidity();
+        return;
+      }
 
+      const streakBefore = _calcStreak(dates);
       dates.push(today);
       const newTotalLogins = (_userData.totalLogins ?? 0) + 1;
+
+      const streakAfter = _calcStreak(dates);
+
       await DB.updatePlayer(_user.uid, {
         loginDates:  dates,
         totalLogins: newTotalLogins,
@@ -445,19 +452,49 @@ const App = (() => {
       _userData.loginDates  = dates;
       _userData.totalLogins = newTotalLogins;
 
-      // Apply bond decay if pigeon exists and player missed yesterday
+      // Handle nest validity based on streak
+      _checkNestValidity();
+
+      const missedDays = _calcMissedDays(dates);
+      if (missedDays > 0) {
+        await _applyPenalties(missedDays);
+      } else if (_pigeon && (_pigeon.bond ?? 50) < 15) {
+        await _checkRehab();
+      }
+
+      // Apply bond decay if active pigeon exists and player missed yesterday
       if (_pigeon) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yStr = yesterday.toISOString().slice(0, 10);
         if (!dates.includes(yStr)) {
           const newBond = Math.max(0, (_pigeon.bond ?? 50) - GAME_CONFIG.bondDecayPerDay);
-          await DB.updatePigeon(_user.uid, { bond: newBond });
+          await DB.updatePigeon(_user.uid, _pigeon.id, { bond: newBond });
           _pigeon.bond = newBond;
         }
       }
     } catch (err) {
       console.error("[App] Record login failed:", err);
+    }
+  }
+
+  async function _checkNestValidity() {
+    const streak = _calcStreak(_userData.loginDates ?? []);
+    if (streak < 5) {
+      // If streak broken, we need to clear unhatched pigeons and prevent breeding
+      // Note: "The nest will be empty" - typically means extra pigeons/eggs gone?
+      // "If the player doesnt get to the 5 consecutive login days, their nest will be empty"
+      // Interpreting as: they lose all pigeons EXCEPT their active one if they break the streak.
+      const pigeons = await DB.getPigeons(_user.uid);
+      if (pigeons.length > 1) {
+        for (const p of pigeons) {
+          if (p.id !== (_userData.activePigeonId || _user.uid)) {
+             await DB.deletePigeon(_user.uid, p.id);
+          }
+        }
+        showToast("💨 Your streak broke! The nest is empty.");
+        await _loadPigeons();
+      }
     }
   }
 
@@ -470,11 +507,18 @@ const App = (() => {
       showScreen("egg");
       _renderEggScreen();
     } else if (_pigeon) {
-      showScreen("home");
-      _renderHomeScreen();
-      _renderProfileScreen();
-      // Show daily mood popup after a short delay
-      setTimeout(_showMoodPopup, 800);
+      _checkNestValidity(); // double check on load
+      if (!_pigeon.hatched) {
+        showScreen("egg");
+        _renderEggScreen();
+      } else {
+        showScreen("home");
+        _renderHomeScreen();
+        _renderProfileScreen();
+        _renderNestScreen();
+        // Show daily mood popup after a short delay
+        setTimeout(_showMoodPopup, 800);
+      }
     }
   }
 
@@ -590,7 +634,8 @@ const App = (() => {
 
     try {
       // Re-fetch pigeon doc to get latest incubation log
-      const data = await DB.getPigeon(_user.uid);
+      const pid = _pigeon?.id || (_userData.activePigeonId || _user.uid);
+      const data = await DB.getPigeon(_user.uid, pid);
 
       // Double-check — belt and suspenders
       if (data && data.lastActionDate === today) {
@@ -605,14 +650,15 @@ const App = (() => {
       incubationLog.push(action);
 
       const pigeonData = {
+        id:             pid,
         uid:            _user.uid,
         incubationLog,
         lastActionDate: today,
         hatched:        false,
       };
 
-      if (data) await DB.updatePigeon(_user.uid, pigeonData);
-      else await DB.setPigeon(_user.uid, pigeonData);
+      if (data) await DB.updatePigeon(_user.uid, pid, pigeonData);
+      else await DB.setPigeon(_user.uid, pid, pigeonData);
 
       _pigeon = pigeonData;
       showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} done! Come back tomorrow.`);
@@ -646,7 +692,9 @@ const App = (() => {
      SAVE NEW PIGEON (called by Hatch.js after naming)
   ────────────────────────────────────────────────────────────── */
   async function saveNewPigeon(name, traits, stats) {
+    const pid = _pigeon?.id || (_userData.activePigeonId || _user.uid);
     const pigeonData = {
+      id:            pid,
       uid:           _user.uid,
       name,
       traits,
@@ -663,11 +711,12 @@ const App = (() => {
     };
 
     try {
-      await DB.setPigeon(_user.uid, pigeonData);
-      await DB.updatePlayer(_user.uid, { hasPigeon: true, pigeonId: _user.uid });
+      await DB.setPigeon(_user.uid, pid, pigeonData);
+      await DB.updatePlayer(_user.uid, { hasPigeon: true, activePigeonId: pid });
 
       _pigeon = pigeonData;
       _userData.hasPigeon = true;
+      _userData.activePigeonId = pid;
 
       _renderHomeScreen();
       _renderProfileScreen();
@@ -838,7 +887,7 @@ const App = (() => {
 
     try {
       // Double-check
-      const data = await DB.getPigeon(_user.uid);
+      const data = await DB.getPigeon(_user.uid, _pigeon.id);
       if (data && data[field] === today) {
         showToast("Already done today — come back tomorrow!");
         _pigeon = data;
@@ -861,7 +910,7 @@ const App = (() => {
         statUpdates.stats = stats;
       }
 
-      await DB.updatePigeon(_user.uid, {
+      await DB.updatePigeon(_user.uid, _pigeon.id, {
         [field]: today,
         bond:    newBond,
         ...statUpdates,
@@ -892,6 +941,153 @@ const App = (() => {
   function _weakestStat(stats) {
     const keys = Object.keys(stats);
     return keys.reduce((min, k) => stats[k] < stats[min] ? k : min, keys[0]);
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     NEST SCREEN
+  ────────────────────────────────────────────────────────────── */
+  async function _renderNestScreen() {
+    const streak = _calcStreak(_userData.loginDates ?? []);
+    const streakBadge = document.getElementById("nest-streak");
+    if (streakBadge) streakBadge.textContent = streak;
+
+    const navNest = document.getElementById("nav-nest");
+    if (navNest) navNest.style.display = streak >= 5 ? "flex" : "none";
+
+    const breedSection = document.getElementById("breed-section");
+    const parentName = document.getElementById("parent-name");
+
+    const pigeons = await DB.getPigeons(_user.uid);
+    const slotsWrap = document.getElementById("nest-slots");
+
+    if (slotsWrap) {
+      slotsWrap.innerHTML = "";
+      pigeons.forEach(p => {
+        const isActive = p.id === (_userData.activePigeonId || _user.uid);
+        const card = document.createElement("div");
+        card.className = `nest-pigeon-card ${isActive ? 'active' : 'inactive'}`;
+        const statusText = p.hatched
+          ? `LVL ${p.level || 1} • ${p.bond || 0}% BOND`
+          : `EGG • ${p.incubationLog?.length || 0}/3 DAYS`;
+
+        card.innerHTML = `
+          <div class="pigeon-rig idle" id="nest-rig-${p.id}"></div>
+          <div class="nest-pigeon-info">
+            <div class="nest-pigeon-name">
+              ${p.name || (p.hatched ? "Pigeon" : "New Egg")}
+              ${isActive ? '<span class="nest-pigeon-active-tag">Active</span>' : ''}
+            </div>
+            <div class="nest-pigeon-status">${statusText}</div>
+          </div>
+          ${!isActive ? `<button class="btn-ghost btn-sm btn-switch" data-id="${p.id}">Switch</button>` : ''}
+        `;
+        slotsWrap.appendChild(card);
+
+        if (p.hatched) {
+          buildPigeonRig(document.getElementById(`nest-rig-${p.id}`), p.traits);
+        } else {
+          // Render egg
+          const rig = document.getElementById(`nest-rig-${p.id}`);
+          const daysDone = (p.incubationLog ?? []).length;
+          let eggState = "egg_whole";
+          if (daysDone === 1) eggState = "egg_crack1";
+          if (daysDone >= 2) eggState = "egg_crack2";
+          rig.innerHTML = `<img src="${PIGEON_CONFIG.eggPath(eggState)}" class="egg-img" style="width:60px;height:60px;object-fit:contain">`;
+        }
+      });
+
+      // Handle Switch Clicks
+      slotsWrap.querySelectorAll(".btn-switch").forEach(btn => {
+        btn.onclick = () => _switchPigeon(btn.dataset.id);
+      });
+    }
+
+    if (breedSection) {
+      // Can breed if streak >= 5 and pigeons < 3
+      if (streak >= 5 && pigeons.length < 3) {
+        breedSection.classList.remove("hidden");
+        if (parentName) parentName.textContent = _pigeon?.name || "your pigeon";
+      } else {
+        breedSection.classList.add("hidden");
+      }
+    }
+  }
+
+  function _initNestActions() {
+    document.getElementById("btn-breed")?.addEventListener("click", _breedEgg);
+  }
+
+  async function _breedEgg() {
+    const streak = _calcStreak(_userData.loginDates ?? []);
+    if (streak < 5) {
+      showToast("🔥 You need a 5-day streak to breed!");
+      return;
+    }
+    const pigeons = await DB.getPigeons(_user.uid);
+    if (pigeons.length >= 3) {
+      showToast("🪹 Your nest is full! (Max 3)");
+      return;
+    }
+
+    if (!confirm("Breed a new egg? This will inherit traits from your active pigeon.")) return;
+
+    try {
+      // Create new egg with inherited trait
+      const parentTraits = _pigeon.traits;
+      const traitKeys = Object.keys(parentTraits);
+      const inheritedKey = traitKeys[Math.floor(Math.random() * traitKeys.length)];
+
+      // New traits: generate random, then override one from parent
+      const newTraits = generatePigeonTraits(_user.uid + Date.now());
+      newTraits[inheritedKey] = parentTraits[inheritedKey];
+
+      const pigeonId = "pigeon_" + Date.now();
+      const eggData = {
+        id:             pigeonId,
+        uid:            _user.uid,
+        name:           "New Egg",
+        traits:         newTraits,
+        hatched:        false,
+        incubationLog:  [],
+        lastActionDate: null,
+        bond:           50,
+        level:          1,
+        xp:             0
+      };
+
+      await DB.setPigeon(_user.uid, pigeonId, eggData);
+      showToast("🥚 A new egg has appeared in the nest!");
+      _renderNestScreen();
+    } catch (err) {
+      console.error("[App] Breeding failed:", err);
+    }
+  }
+
+  async function _switchPigeon(id) {
+    const now = Date.now();
+    const lastSwitch = _userData.lastSwitchDate || 0;
+    const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+    if (now - lastSwitch < ONE_WEEK) {
+      const daysLeft = Math.ceil((ONE_WEEK - (now - lastSwitch)) / (24 * 60 * 60 * 1000));
+      showToast(`⏳ You can switch again in ${daysLeft} days.`);
+      return;
+    }
+
+    try {
+      await DB.updatePlayer(_user.uid, {
+        activePigeonId: id,
+        lastSwitchDate: now
+      });
+      _userData.activePigeonId = id;
+      _userData.lastSwitchDate = now;
+
+      await _loadPigeons();
+      _routeAfterLoad();
+      showToast("🐦 Pigeon switched!");
+    } catch (err) {
+      console.error("[App] Switch pigeon failed:", err);
+    }
   }
 
   /* ──────────────────────────────────────────────────────────
@@ -1000,7 +1196,7 @@ const App = (() => {
       // XP gain from battle: 50 for win, 20 for loss
       const xpGain = won ? 50 : 20;
       const { level, xp } = _applyXP(_pigeon.level ?? 1, _pigeon.xp ?? 0, xpGain);
-      await DB.updatePigeon(_user.uid, { level, xp });
+      await DB.updatePigeon(_user.uid, _pigeon.id, { level, xp });
       _pigeon.level = level;
       _pigeon.xp = xp;
 
@@ -1421,7 +1617,7 @@ const App = (() => {
     updates.rehabDay = rehabDay;
 
     try {
-      await DB.updatePigeon(_user.uid, updates);
+      await DB.updatePigeon(_user.uid, _pigeon.id, updates);
       _pigeon.bond    = bond;
       _pigeon.stats   = stats;
       _pigeon.rehabDay = rehabDay;
@@ -1455,7 +1651,7 @@ const App = (() => {
     }
 
     try {
-      await DB.updatePigeon(_user.uid, updates);
+      await DB.updatePigeon(_user.uid, _pigeon.id, updates);
     } catch (err) {
       console.error("[App] Check rehab failed:", err);
     }

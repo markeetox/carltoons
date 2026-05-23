@@ -32,31 +32,58 @@ const DB = {
     }
   },
 
-  // pigeons/{uid}
-  async getPigeon(uid) {
+  // pigeons/{uid}/{pigeonId}
+  async getPigeon(uid, pigeonId) {
     if (!uid || !auth.currentUser) return null;
+    const id = pigeonId || uid; // fallback for legacy
     try {
-      const snap = await db.ref(`pigeons/${uid}`).once('value');
+      const snap = await db.ref(`pigeons/${uid}/${id}`).once('value');
       return snap.exists() ? snap.val() : null;
     } catch (err) {
       console.error("[DB] getPigeon failed:", err);
       return null;
     }
   },
-  async setPigeon(uid, data) {
-    if (!uid || !auth.currentUser) return;
+  async getPigeons(uid) {
+    if (!uid || !auth.currentUser) return [];
     try {
-      await db.ref(`pigeons/${uid}`).set(data);
+      const snap = await db.ref(`pigeons/${uid}`).once('value');
+      if (!snap.exists()) return [];
+      const data = snap.val();
+      // If it's the old format (object with stats directly), wrap it
+      if (data.stats && !data.p1) {
+        return [{ id: uid, ...data }];
+      }
+      return Object.keys(data).map(k => ({ id: k, ...data[k] }));
+    } catch (err) {
+      console.error("[DB] getPigeons failed:", err);
+      return [];
+    }
+  },
+  async setPigeon(uid, pigeonId, data) {
+    if (!uid || !auth.currentUser) return;
+    const id = pigeonId || uid;
+    try {
+      await db.ref(`pigeons/${uid}/${id}`).set(data);
     } catch (err) {
       console.error("[DB] setPigeon failed:", err);
     }
   },
-  async updatePigeon(uid, data) {
+  async updatePigeon(uid, pigeonId, data) {
     if (!uid || !auth.currentUser) return;
+    const id = pigeonId || uid;
     try {
-      await db.ref(`pigeons/${uid}`).update(data);
+      await db.ref(`pigeons/${uid}/${id}`).update(data);
     } catch (err) {
       console.error("[DB] updatePigeon failed:", err);
+    }
+  },
+  async deletePigeon(uid, pigeonId) {
+    if (!uid || !auth.currentUser) return;
+    try {
+      await db.ref(`pigeons/${uid}/${pigeonId}`).remove();
+    } catch (err) {
+      console.error("[DB] deletePigeon failed:", err);
     }
   },
 
@@ -146,37 +173,7 @@ const DB = {
     });
 
     const battles = Array.from(results.values());
-    const now = Date.now();
-    const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
-
-    const active = [];
-    for (const b of battles) {
-      if (b.status === 'done') continue;
-
-      // Handle 3-day timeout
-      const last = b.lastActivity || b.createdAt || now;
-      if (now - last > THREE_DAYS_MS) {
-        // Determine winner: last player who interacted.
-        // If guestMove exists but host hasn't moved, guest was last.
-        // If both moved, host resolves (shouldn't happen with both, but fallback to host).
-        let winnerId = b.hostId;
-        if (b.status === 'challenged') winnerId = b.hostId; // guest never accepted
-        else if (b.guestMove && !b.hostMove) winnerId = b.guestId;
-        else if (b.hostMove && !b.guestMove) winnerId = b.hostId;
-
-        try {
-          await db.ref(`battles/${b.id}`).update({
-            status: 'done',
-            winnerId,
-            fullLog: [...(b.fullLog || []), "⏱️ Battle ended due to 2 days of inactivity."]
-          });
-        } catch (_) {}
-        continue; // Filter out from list
-      }
-      active.push(b);
-    }
-
-      return active;
+    return battles.filter(b => b.status !== 'done');
     } catch (err) {
       console.error("[DB] getMyBattles failed:", err);
       return [];

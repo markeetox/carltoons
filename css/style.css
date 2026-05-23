@@ -202,6 +202,57 @@ input { font-family: var(--font-body); }
 
 
 /* ════════════════════════════════════════════════════════════
+   NEST SCREEN
+   ════════════════════════════════════════════════════════════ */
+.nest-content {
+  padding: var(--sp-md);
+  display: flex; flex-direction: column; gap: var(--sp-lg);
+}
+.nest-intro {
+  font-size: 13px; color: var(--clr-text-dim); text-align: center;
+  padding: 0 var(--sp-md); line-height: 1.6;
+}
+.nest-slots {
+  display: flex; flex-direction: column; gap: var(--sp-md);
+}
+.nest-pigeon-card {
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-md);
+  display: flex; align-items: center; gap: var(--sp-md);
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.nest-pigeon-card.active { border-color: var(--clr-gold); border-width: 2px; }
+.nest-pigeon-card.inactive { background: #fdfdfd; }
+.nest-pigeon-card .pigeon-rig { --rig-size: 100px; }
+
+.nest-pigeon-info { flex: 1; }
+.nest-pigeon-name { font-family: var(--font-display); font-size: 18px; color: var(--clr-text); }
+.nest-pigeon-status { font-size: 11px; color: var(--clr-text-muted); text-transform: uppercase; }
+.nest-pigeon-active-tag {
+  background: var(--clr-gold); color: #fff; font-size: 10px; font-weight: 800;
+  padding: 2px 8px; border-radius: var(--r-pill); margin-left: 8px;
+}
+
+.breed-section {
+  width: 100%; margin-top: var(--sp-md);
+}
+.breed-section.hidden { display: none; }
+.breed-card {
+  background: var(--clr-gold-dim);
+  border: 2px dashed var(--clr-gold);
+  border-radius: var(--r-lg);
+  padding: var(--sp-lg);
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-sm);
+  text-align: center;
+}
+.breed-icon { font-size: 32px; color: var(--clr-gold); }
+.breed-card h3 { font-family: var(--font-display); color: var(--clr-gold); }
+.breed-card p { font-size: 12px; color: var(--clr-text-dim); }
+
+/* ════════════════════════════════════════════════════════════
    PIGEON RIG
    All layers are 500×500px PNGs with the art placed where it
    belongs and the rest transparent. Stack them all at 0,0
