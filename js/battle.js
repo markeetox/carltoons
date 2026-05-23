@@ -3,8 +3,8 @@
    ────────────────────────────────────────────────────────────
    HOW MULTIPLAYER WORKS (no game server needed):
 
-   Firestore document:  battles/{battleId}
-   Both players listen with onSnapshot() — Firestore is the
+   Database document:  battles/{battleId}
+   Both players listen with on('value') — Database is the
    message bus. The host resolves each round via a transaction
    so there's no race condition.
 
@@ -17,7 +17,7 @@
         → state updates → both clients animate simultaneously
      6. Winner/loser saved, ELO updated
 
-   Firestore schema:  battles/{battleId}
+   Database schema:  battles/{battleId}
      status:       "waiting" | "active" | "resolving" | "done"
      hostId        string
      guestId       string | null

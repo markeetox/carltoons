@@ -67,7 +67,12 @@
         <input type="text"     id="auth-username" class="auth-input" placeholder="Username" autocomplete="username" />
         <input type="email"    id="auth-email"    class="auth-input" placeholder="Email" autocomplete="email" />
         <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password" />
-        <div class="auth-forgot-wrap">
+
+        <div class="auth-options">
+          <label class="remember-me">
+            <input type="checkbox" id="auth-remember" checked />
+            <span>Remember Me</span>
+          </label>
           <button type="button" class="btn-link" id="btn-forgot-pw">Forgot password?</button>
         </div>
         <p class="auth-error" id="auth-error"></p>

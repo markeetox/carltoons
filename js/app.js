@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════
    app.js  —  Main app controller
-   Handles: auth, screen routing, Firestore reads/writes,
+   Handles: auth, screen routing, Realtime DB reads/writes,
             daily care actions, Discord role verification
    ════════════════════════════════════════════════════════════ */
 
@@ -34,7 +34,7 @@ function todayStr() {
 }
 
 /* ── localStorage action gate ──────────────────────────────
-   Written BEFORE the Firestore write so a refresh mid-write
+   Written BEFORE the database write so a refresh mid-write
    can never grant a second action on the same day.
    Key format:  pigeons_{uid}_{action}  e.g. pigeons_abc_egg
    Value:       date string "2025-01-15"
@@ -52,8 +52,8 @@ function _isActionLocked(uid, action) {
 }
 
 function _syncLocksFromDB(uid, pigeonData) {
-  // On load, sync localStorage with Firestore so they agree.
-  // Firestore always wins — if Firestore says used, lock it.
+  // On load, sync localStorage with database so they agree.
+  // Database always wins — if database says used, lock it.
   if (!pigeonData) return;
   const today = todayStr();
   if (pigeonData.lastActionDate === today) _lockAction(uid, "egg");
@@ -104,8 +104,8 @@ function startCountdownTicker() {
    ════════════════════════════════════════════════════════════ */
 const App = (() => {
   let _user     = null;   // Firebase auth user
-  let _userData = null;   // Firestore player document
-  let _pigeon   = null;   // Firestore pigeon document
+  let _userData = null;   // Realtime DB player document
+  let _pigeon   = null;   // Realtime DB pigeon document
   let _howtoReturnScreen = "home";  // screen to return to from how-to
 
   /* ──────────────────────────────────────────────────────────
@@ -123,6 +123,7 @@ const App = (() => {
 
     // Auth form first — always available on login screen
     _initAuthForm();
+
 
     // Watch auth state — routes to correct screen
     auth.onAuthStateChanged(async (user) => {
@@ -223,7 +224,13 @@ const App = (() => {
     const btnLabel    = document.getElementById("btn-auth-label");
     const errEl       = document.getElementById("auth-error");
     const btnForgot   = document.getElementById("btn-forgot-pw");
-    const forgotWrap  = document.querySelector(".auth-forgot-wrap");
+    const forgotWrap  = document.querySelector(".auth-options");
+
+    // Pre-fill email if remembered
+    const savedEmail = localStorage.getItem("pigeon_login_email");
+    if (savedEmail) {
+      document.getElementById("auth-email").value = savedEmail;
+    }
 
     // Tab switching
     tabLogin.addEventListener("click", () => {
@@ -289,6 +296,13 @@ const App = (() => {
       btnLabel.textContent = isRegister ? "Creating…" : "Logging in…";
 
       try {
+        const remember = document.getElementById("auth-remember").checked;
+        const persistence = remember
+          ? firebase.auth.Auth.Persistence.LOCAL
+          : firebase.auth.Auth.Persistence.SESSION;
+
+        await auth.setPersistence(persistence);
+
         if (isRegister) {
           const cred = await auth.createUserWithEmailAndPassword(email, password);
           // Store display name so it shows in game
@@ -296,6 +310,14 @@ const App = (() => {
         } else {
           await auth.signInWithEmailAndPassword(email, password);
         }
+
+        // Remember email if checked
+        if (document.getElementById("auth-remember").checked) {
+          localStorage.setItem("pigeon_login_email", email);
+        } else {
+          localStorage.removeItem("pigeon_login_email");
+        }
+
         // onAuthStateChanged fires → _loadPlayer() called automatically
       } catch (err) {
         errEl.textContent = _authErrorMsg(err.code);
@@ -334,7 +356,7 @@ const App = (() => {
   }
 
   /* ──────────────────────────────────────────────────────────
-     LOAD PLAYER from Firestore
+     LOAD PLAYER from Realtime DB
      Document path: players/{uid}
   ────────────────────────────────────────────────────────────── */
   async function _loadPlayer() {
@@ -386,7 +408,7 @@ const App = (() => {
   }
 
   /* ──────────────────────────────────────────────────────────
-     LOAD PIGEON from Firestore
+     LOAD PIGEON from Realtime DB
      Document path: pigeons/{uid}  (one pigeon per player for now)
   ────────────────────────────────────────────────────────────── */
   async function _loadPigeon() {
@@ -465,7 +487,7 @@ const App = (() => {
     const daysDone    = actionLog.filter(Boolean).length;
     const daysLeft    = GAME_CONFIG.eggDays - daysDone;
     const today       = todayStr();
-    // Check both Firestore data AND localStorage — whichever says used, it's used
+    // Check both database data AND localStorage — whichever says used, it's used
     const usedToday = egg.lastActionDate === today
       || (_user && _isActionLocked(_user.uid, "egg"));
 
@@ -545,14 +567,14 @@ const App = (() => {
   async function _doEggAction(action) {
     const today = todayStr();
 
-    // ── Gate check: localStorage first (instant), then Firestore ──
+    // ── Gate check: localStorage first (instant), then database ──
     if (_isActionLocked(_user.uid, "egg")) {
       showToast("Already done today — come back tomorrow!");
       _renderEggScreen();
       return;
     }
 
-    // Lock immediately — BEFORE the Firestore write
+    // Lock immediately — BEFORE the database write
     // This prevents a refresh mid-write from granting a second action
     _lockAction(_user.uid, "egg");
 
@@ -603,7 +625,7 @@ const App = (() => {
       }
     } catch (err) {
       console.error("[App] Egg action failed:", err);
-      showToast("Action failed. Check Firestore permissions.");
+      showToast("Action failed. Check database permissions.");
       // Unlock so they can try again
       localStorage.removeItem(`pigeons_${_user.uid}_egg`);
       _renderEggScreen();
@@ -764,7 +786,7 @@ const App = (() => {
     ["food","play","train"].forEach((care) => {
       const btn   = document.getElementById(`care-${care}`);
       const field = CARE_FIELDS[care];
-      // Check Firestore data OR localStorage — both count as done
+      // Check database data OR localStorage — both count as done
       const done  = _pigeon[field] === today
         || (_user && _isActionLocked(_user.uid, care));
       if (btn) btn.classList.toggle("done", done);
@@ -861,7 +883,7 @@ const App = (() => {
       triggerAnimation(document.getElementById("home-rig"), "victory", 900);
     } catch (err) {
       console.error("[App] Care action failed:", err);
-      showToast("Action failed. Check Firestore permissions.");
+      showToast("Action failed. Check database permissions.");
       localStorage.removeItem(`pigeons_${_user.uid}_${careType}`);
       _renderHomeScreen();
     }
