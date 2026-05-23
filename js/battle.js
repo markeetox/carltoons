@@ -49,7 +49,6 @@ const Battle = (() => {
   let _battleOver    = false;
   let _rigBuilt      = false;
   let _matchFoundShown = false;
-  let _timeoutTimer  = null;
 
   /* ════════════════════════════════════════════════════════
      MATCHMAKING
@@ -286,8 +285,6 @@ const Battle = (() => {
       _setPickerWaiting(true);
     }
 
-    // Touch the timeout clock on any activity
-    _resetTimeoutWatcher(d);
   }
 
   /* ════════════════════════════════════════════════════════
@@ -525,7 +522,6 @@ const Battle = (() => {
 
   async function _onBattleEnd(d) {
     if (_unsubscribe) { _battleRef.off('value', _unsubscribe); _unsubscribe = null; }
-    if (_timeoutTimer) { clearInterval(_timeoutTimer); _timeoutTimer = null; }
 
     const isHost = _myRole === "host";
     const iWon   = d.winnerId === _myUid;
@@ -572,66 +568,11 @@ const Battle = (() => {
   }
 
   /* ════════════════════════════════════════════════════════
-     TIMEOUT WATCHER  (host only)
-     If opponent hasn't moved in 90s, host wins by default
-  ════════════════════════════════════════════════════════ */
-
-  function _resetTimeoutWatcher(d) {
-    if (d.status !== "active") return;
-    if (_timeoutTimer) clearInterval(_timeoutTimer);
-
-    _timeoutTimer = setInterval(async () => {
-      try {
-        if (_battleOver) { clearInterval(_timeoutTimer); return; }
-        const snap = await _battleRef.once('value');
-        if (!snap.exists()) { clearInterval(_timeoutTimer); return; }
-        const data = snap.val();
-        if (data.status !== "active") return;
-
-        const last = data.lastActivity || Date.now();
-        const secondsSince = (Date.now() - last) / 1000;
-
-        // Increase timeout to 5 minutes for better PWA experience
-        if (secondsSince > 300) {
-          clearInterval(_timeoutTimer);
-
-          const isHost = _myRole === "host";
-          const myMove = isHost ? data.hostMove : data.guestMove;
-          const opMove = isHost ? data.guestMove : data.hostMove;
-
-          // Only claim victory if I HAVE moved and they HAVEN'T
-          if (myMove && !opMove) {
-            const fullLog = (data.fullLog || []);
-            fullLog.push("⏱️ Opponent timed out. Victory by default!");
-            await _battleRef.update({
-              status:   "done",
-              winnerId: _myUid,
-              fullLog:  fullLog,
-              lastActivity: Date.now()
-            });
-          } else if (!myMove && !opMove && isHost) {
-            // If neither moved for 5 mins, host closes the battle as stale
-            await _battleRef.update({
-              status: "done",
-              winnerId: null,
-              fullLog: [...(data.fullLog || []), "⏱️ Battle closed due to inactivity."],
-              lastActivity: Date.now()
-            });
-          }
-        }
-      } catch (err) {
-        console.error("[Battle] Timeout watcher error:", err);
-      }
-    }, 20000);
-  }
-
-  /* ════════════════════════════════════════════════════════
      CANCEL MATCHMAKING
   ════════════════════════════════════════════════════════ */
 
   async function cancelMatchmaking() {
     if (_unsubscribe) { _battleRef.off('value', _unsubscribe); _unsubscribe = null; }
-    if (_timeoutTimer) { clearInterval(_timeoutTimer); _timeoutTimer = null; }
     if (_battleRef && _myRole === "host") {
       try {
         const snap = await _battleRef.once('value');
