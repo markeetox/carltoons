@@ -35,10 +35,21 @@ const DB = {
   // pigeons/{uid}/{pigeonId}
   async getPigeon(uid, pigeonId) {
     if (!uid || !auth.currentUser) return null;
-    const id = pigeonId || uid; // fallback for legacy
+    const id = pigeonId || uid;
     try {
+      // 1. Try the specific sub-node (new format)
       const snap = await db.ref(`pigeons/${uid}/${id}`).once('value');
-      return snap.exists() ? snap.val() : null;
+      if (snap.exists()) return { id, ...snap.val() };
+
+      // 2. If no sub-node and asking for the main pigeon (pigeonId == uid), check root (legacy)
+      if (id === uid) {
+        const rootSnap = await db.ref(`pigeons/${uid}`).once('value');
+        if (rootSnap.exists()) {
+          const val = rootSnap.val();
+          if (val.stats || val.incubationLog) return { id: uid, ...val };
+        }
+      }
+      return null;
     } catch (err) {
       console.error("[DB] getPigeon failed:", err);
       return null;
@@ -50,11 +61,28 @@ const DB = {
       const snap = await db.ref(`pigeons/${uid}`).once('value');
       if (!snap.exists()) return [];
       const data = snap.val();
-      // If it's the old format (object with stats directly), wrap it
-      if (data.stats && !data.p1) {
-        return [{ id: uid, ...data }];
+
+      const pigeons = [];
+
+      // Check for legacy pigeon at root
+      if (data.stats || data.incubationLog) {
+        pigeons.push({ id: uid, ...data });
       }
-      return Object.keys(data).map(k => ({ id: k, ...data[k] }));
+
+      // Check for nested pigeons (multi-pigeon format)
+      Object.keys(data).forEach(k => {
+        const val = data[k];
+        // If the key value is an object and looks like a pigeon (has stats or incubationLog)
+        // and isn't the legacy stats/log itself
+        if (val && typeof val === 'object' && (val.stats || val.incubationLog)) {
+          // Prevent duplicates if we already added it (e.g. if key was 'stats' somehow)
+          if (!pigeons.find(p => p.id === k)) {
+            pigeons.push({ id: k, ...val });
+          }
+        }
+      });
+
+      return pigeons;
     } catch (err) {
       console.error("[DB] getPigeons failed:", err);
       return [];
