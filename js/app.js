@@ -487,13 +487,21 @@ const App = (() => {
       // Interpreting as: they lose all pigeons EXCEPT their active one if they break the streak.
       const pigeons = await DB.getPigeons(_user.uid);
       if (pigeons.length > 1) {
+        let deleted = false;
         for (const p of pigeons) {
-          if (p.id !== (_userData.activePigeonId || _user.uid)) {
+          // Never delete the primary pigeon (id == uid) OR the currently active one
+          const isPrimary = p.id === _user.uid;
+          const isActive  = p.id === (_userData.activePigeonId || _user.uid);
+
+          if (!isPrimary && !isActive) {
              await DB.deletePigeon(_user.uid, p.id);
+             deleted = true;
           }
         }
-        showToast("💨 Your streak broke! The nest is empty.");
-        await _loadPigeons();
+        if (deleted) {
+          showToast("💨 Your streak broke! The extra nest slots are empty.");
+          await _loadPigeons();
+        }
       }
     }
   }
@@ -1071,9 +1079,7 @@ const App = (() => {
 
       await DB.setPigeon(_user.uid, pigeonId, eggData);
       showToast("🥚 A new egg has appeared in the nest!");
-
-      // Auto-switch to the new egg immediately
-      await _switchPigeon(pigeonId, true);
+      _renderNestScreen();
     } catch (err) {
       console.error("[App] Breeding failed:", err);
     }
