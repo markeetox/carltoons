@@ -959,6 +959,33 @@ const App = (() => {
 
     const pigeons = await DB.getPigeons(_user.uid);
     const slotsWrap = document.getElementById("nest-slots");
+    const visualSlots = document.getElementById("nest-visual-slots");
+
+    if (visualSlots) {
+      visualSlots.innerHTML = "";
+      pigeons.forEach(p => {
+        const isActive = p.id === (_userData.activePigeonId || _user.uid);
+        const item = document.createElement("div");
+        item.className = `nest-visual-item ${isActive ? 'active' : ''}`;
+        const rigId = `nest-visual-rig-${p.id}`;
+        item.innerHTML = `<div id="${rigId}"></div>`;
+        visualSlots.appendChild(item);
+
+        const rigEl = document.getElementById(rigId);
+        if (p.hatched) {
+          const rig = document.createElement("div");
+          rig.className = "pigeon-rig idle";
+          buildPigeonRig(rig, p.traits);
+          rigEl.appendChild(rig);
+        } else {
+          const daysDone = (p.incubationLog ?? []).length;
+          let eggState = "egg_whole";
+          if (daysDone === 1) eggState = "egg_crack1";
+          if (daysDone >= 2) eggState = "egg_crack2";
+          rigEl.innerHTML = `<img src="${PIGEON_CONFIG.eggPath(eggState)}" class="egg-img">`;
+        }
+      });
+    }
 
     if (slotsWrap) {
       slotsWrap.innerHTML = "";
@@ -971,7 +998,6 @@ const App = (() => {
           : `EGG • ${p.incubationLog?.length || 0}/3 DAYS`;
 
         card.innerHTML = `
-          <div class="pigeon-rig idle" id="nest-rig-${p.id}"></div>
           <div class="nest-pigeon-info">
             <div class="nest-pigeon-name">
               ${p.name || (p.hatched ? "Pigeon" : "New Egg")}
@@ -982,18 +1008,6 @@ const App = (() => {
           ${!isActive ? `<button class="btn-ghost btn-sm btn-switch" data-id="${p.id}">Switch</button>` : ''}
         `;
         slotsWrap.appendChild(card);
-
-        if (p.hatched) {
-          buildPigeonRig(document.getElementById(`nest-rig-${p.id}`), p.traits);
-        } else {
-          // Render egg
-          const rig = document.getElementById(`nest-rig-${p.id}`);
-          const daysDone = (p.incubationLog ?? []).length;
-          let eggState = "egg_whole";
-          if (daysDone === 1) eggState = "egg_crack1";
-          if (daysDone >= 2) eggState = "egg_crack2";
-          rig.innerHTML = `<img src="${PIGEON_CONFIG.eggPath(eggState)}" class="egg-img" style="width:60px;height:60px;object-fit:contain">`;
-        }
       });
 
       // Handle Switch Clicks
@@ -1057,18 +1071,23 @@ const App = (() => {
 
       await DB.setPigeon(_user.uid, pigeonId, eggData);
       showToast("🥚 A new egg has appeared in the nest!");
-      _renderNestScreen();
+
+      // Auto-switch to the new egg immediately
+      await _switchPigeon(pigeonId, true);
     } catch (err) {
       console.error("[App] Breeding failed:", err);
     }
   }
 
-  async function _switchPigeon(id) {
+  async function _switchPigeon(id, force = false) {
     const now = Date.now();
     const lastSwitch = _userData.lastSwitchDate || 0;
     const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
 
-    if (now - lastSwitch < ONE_WEEK) {
+    // Allow switching if forced (new breeding) OR if the current pigeon is an egg
+    const isCurrentPigeonEgg = _pigeon && !_pigeon.hatched;
+
+    if (!force && !isCurrentPigeonEgg && (now - lastSwitch < ONE_WEEK)) {
       const daysLeft = Math.ceil((ONE_WEEK - (now - lastSwitch)) / (24 * 60 * 60 * 1000));
       showToast(`⏳ You can switch again in ${daysLeft} days.`);
       return;
