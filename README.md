@@ -24,7 +24,10 @@ Copy and paste these into your **Realtime Database > Rules** tab. These rules en
     "pigeons": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && auth.uid == $uid",
+        "$pigeonId": {
+          ".write": "auth != null && auth.uid == $uid"
+        }
       }
     },
     "battles": {
@@ -36,6 +39,8 @@ Copy and paste these into your **Realtime Database > Rules** tab. These rules en
   }
 }
 ```
+
+> **Note on Data Structure:** The game uses a nested structure for pigeons (`pigeons/{uid}/{pigeonId}`). The rules above ensure that users can only write to their own pigeon sub-nodes.
 
 ### 2. Indexes
 

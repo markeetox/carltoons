@@ -64,23 +64,20 @@ const DB = {
 
       const pigeons = [];
 
-      // Check for legacy pigeon at root
-      if (data.stats || data.incubationLog) {
-        pigeons.push({ id: uid, ...data });
-      }
-
-      // Check for nested pigeons (multi-pigeon format)
+      // Check for nested pigeons first (multi-pigeon format)
+      // This helps prioritize sub-nodes which should be the standard moving forward
       Object.keys(data).forEach(k => {
         const val = data[k];
-        // If the key value is an object and looks like a pigeon (has stats or incubationLog)
-        // and isn't the legacy stats/log itself
+        // A pigeon sub-node must be an object with stats OR an incubationLog
         if (val && typeof val === 'object' && (val.stats || val.incubationLog)) {
-          // Prevent duplicates if we already added it (e.g. if key was 'stats' somehow)
-          if (!pigeons.find(p => p.id === k)) {
-            pigeons.push({ id: k, ...val });
-          }
+          pigeons.push({ id: k, ...val });
         }
       });
+
+      // Check for legacy pigeon at root ONLY IF it's not already in the list as a sub-node
+      if ((data.stats || data.incubationLog) && !pigeons.find(p => p.id === uid)) {
+        pigeons.push({ id: uid, ...data });
+      }
 
       return pigeons;
     } catch (err) {

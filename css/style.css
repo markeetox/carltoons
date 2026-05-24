@@ -206,14 +206,35 @@ input { font-family: var(--font-body); }
    ════════════════════════════════════════════════════════════ */
 .nest-content {
   padding: var(--sp-md);
-  display: flex; flex-direction: column; gap: var(--sp-lg);
+  display: flex; flex-direction: column; gap: var(--sp-md);
 }
 .nest-intro {
   font-size: 13px; color: var(--clr-text-dim); text-align: center;
   padding: 0 var(--sp-md); line-height: 1.6;
 }
+.nest-scene {
+  width: 100%; aspect-ratio: 16 / 9;
+  background: var(--clr-bg);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--clr-border);
+  position: relative; overflow: hidden;
+  display: flex; align-items: flex-end; justify-content: space-around;
+  padding-bottom: 20px;
+}
+.nest-visual-slots {
+  display: flex; width: 100%; justify-content: space-around;
+  align-items: flex-end; z-index: 2;
+}
+.nest-visual-item {
+  display: flex; flex-direction: column; align-items: center;
+  transition: transform 0.3s ease;
+}
+.nest-visual-item.active { transform: scale(1.1) translateY(-5px); }
+.nest-visual-item .pigeon-rig { --rig-size: 120px; }
+.nest-visual-item .egg-img { width: 80px; height: 80px; object-fit: contain; }
+
 .nest-slots {
-  display: flex; flex-direction: column; gap: var(--sp-md);
+  display: flex; flex-direction: column; gap: var(--sp-sm);
 }
 .nest-pigeon-card {
   background: var(--clr-bg);
