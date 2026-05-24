@@ -88,7 +88,7 @@ function generatePigeonTraits(seed) {
      mirrored   bool  — add .mirrored class (opponent in battle)
 ────────────────────────────────────────────────────────────── */
 function buildPigeonRig(containerEl, traits, options = {}) {
-  if (!containerEl) return;
+  if (!containerEl || !traits) return;
   containerEl.innerHTML = "";
 
   // Always use the layer order from config — single source of truth

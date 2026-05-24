@@ -56,10 +56,16 @@ function _syncLocksFromDB(uid, pigeonData) {
   // Database always wins — if database says used, lock it.
   if (!pigeonData) return;
   const today = todayStr();
-  if (pigeonData.lastActionDate === today) _lockAction(uid, "egg");
-  if (pigeonData.lastFed       === today)  _lockAction(uid, "food");
-  if (pigeonData.lastPlayed    === today)  _lockAction(uid, "play");
-  if (pigeonData.lastTrained   === today)  _lockAction(uid, "train");
+
+  if (!pigeonData.hatched) {
+    // Egg interaction lock is pigeon-specific
+    if (pigeonData.lastActionDate === today) _lockAction(uid, `egg_${pigeonData.id || uid}`);
+  } else {
+    // Daily care locks
+    if (pigeonData.lastFed       === today)  _lockAction(uid, "food");
+    if (pigeonData.lastPlayed    === today)  _lockAction(uid, "play");
+    if (pigeonData.lastTrained   === today)  _lockAction(uid, "train");
+  }
 }
 
 /* ── Utility: ms until midnight (next day reset) ── */
@@ -416,12 +422,22 @@ const App = (() => {
   async function _loadPigeons() {
     try {
       const all = await DB.getPigeons(_user.uid);
-      const activeId = _userData.activePigeonId || _user.uid;
-      _pigeon = all.find(p => p.id === activeId) || all[0] || null;
 
-      if (_pigeon) {
-        _syncLocksFromDB(_user.uid, _pigeon);
+      // We want the active pigeon to be a hatched one if possible for Home/Profile display
+      const hatched = all.filter(p => p.hatched);
+      const activeId = _userData.activePigeonId || _user.uid;
+
+      let candidate = all.find(p => p.id === activeId);
+
+      // If active candidate is an egg but we have hatched pigeons, default to a hatched one
+      if (candidate && !candidate.hatched && hatched.length > 0) {
+        candidate = hatched.find(p => p.id === _user.uid) || hatched[0];
       }
+
+      _pigeon = candidate || all[0] || null;
+
+      // Sync locks for all pigeons (especially eggs in the nest)
+      all.forEach(p => _syncLocksFromDB(_user.uid, p));
     } catch (err) {
       console.error("[App] Load pigeons failed:", err);
     }
@@ -516,17 +532,15 @@ const App = (() => {
       _renderEggScreen();
     } else if (_pigeon) {
       _checkNestValidity(); // double check on load
-      if (!_pigeon.hatched) {
-        showScreen("egg");
-        _renderEggScreen();
-      } else {
-        showScreen("home");
-        _renderHomeScreen();
-        _renderProfileScreen();
-        _renderNestScreen();
-        // Show daily mood popup after a short delay
-        setTimeout(_showMoodPopup, 800);
-      }
+
+      // If they have any pigeon (hasPigeon), their landing page should be Home.
+      // Unhatched eggs are now interacted with in the Nest.
+      showScreen("home");
+      _renderHomeScreen();
+      _renderProfileScreen();
+      _renderNestScreen();
+      // Show daily mood popup after a short delay
+      setTimeout(_showMoodPopup, 800);
     }
   }
 
@@ -616,23 +630,23 @@ const App = (() => {
     });
   }
 
-  async function _doEggAction(action) {
+  async function _doEggAction(action, pigeonId = null) {
     const today = todayStr();
+    const pid = pigeonId || _pigeon?.id || (_userData.activePigeonId || _user.uid);
+    const lockKey = `egg_${pid}`;
 
     // ── Gate check: localStorage first (instant), then database ──
-    if (_isActionLocked(_user.uid, "egg")) {
+    if (_isActionLocked(_user.uid, lockKey)) {
       showToast("Already done today — come back tomorrow!");
-      _renderEggScreen();
       return;
     }
 
     // Lock immediately — BEFORE the database write
-    // This prevents a refresh mid-write from granting a second action
-    _lockAction(_user.uid, "egg");
+    _lockAction(_user.uid, lockKey);
 
-    // Animate egg
+    // Animate egg if on incubation screen
     const wrap = document.getElementById("egg-wrap");
-    if (wrap) {
+    if (wrap && pid === _pigeon?.id) {
       const animClass = `do-${action}`;
       wrap.classList.remove("do-shake","do-heat","do-lick");
       void wrap.offsetWidth;
@@ -642,48 +656,56 @@ const App = (() => {
 
     try {
       // Re-fetch pigeon doc to get latest incubation log
-      const pid = _pigeon?.id || (_userData.activePigeonId || _user.uid);
       const data = await DB.getPigeon(_user.uid, pid);
 
       // Double-check — belt and suspenders
       if (data && data.lastActionDate === today) {
         showToast("Already done today — come back tomorrow!");
-        _pigeon = data;
-        _renderEggScreen();
+        _renderNestScreen();
         return;
       }
 
       const incubationLog = data ? (data.incubationLog ?? []) : [];
-
       incubationLog.push(action);
 
-      const pigeonData = {
-        id:             pid,
-        uid:            _user.uid,
+      const updates = {
         incubationLog,
         lastActionDate: today,
-        hatched:        false,
       };
 
-      if (data) await DB.updatePigeon(_user.uid, pid, pigeonData);
-      else await DB.setPigeon(_user.uid, pid, pigeonData);
+      await DB.updatePigeon(_user.uid, pid, updates);
 
-      _pigeon = pigeonData;
-      showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} done! Come back tomorrow.`);
+      showToast(`🐣 ${action.charAt(0).toUpperCase() + action.slice(1)} done!`);
+
+      // Update local state if it's the active pigeon
+      if (pid === _pigeon?.id) {
+        _pigeon.incubationLog = incubationLog;
+        _pigeon.lastActionDate = today;
+      }
+
+      _renderNestScreen();
+      _renderEggScreen();
 
       const daysDone = incubationLog.filter(Boolean).length;
-      if (daysDone >= GAME_CONFIG.eggDays) {
+      if (daysDone >= GAME_CONFIG.eggDays && pid === _pigeon?.id) {
         setTimeout(_triggerHatch, 1000);
-      } else {
-        _renderEggScreen();
       }
     } catch (err) {
       console.error("[App] Egg action failed:", err);
       showToast("Action failed. Check database permissions.");
-      // Unlock so they can try again
-      localStorage.removeItem(`pigeons_${_user.uid}_egg`);
-      _renderEggScreen();
+      localStorage.removeItem(`pigeons_${_user.uid}_${lockKey}`);
+      _renderNestScreen();
     }
+  }
+
+  async function _hatchFromNest(id) {
+    // To hatch, we must make it the active pigeon first
+    const pigeons = await DB.getPigeons(_user.uid);
+    const target = pigeons.find(p => p.id === id);
+    if (!target) return;
+
+    _pigeon = target;
+    _triggerHatch();
   }
 
   /* ──────────────────────────────────────────────────────────
@@ -811,11 +833,20 @@ const App = (() => {
     // Build pigeon rig with correct animation state
     const rig = document.getElementById("home-rig");
     if (rig) {
-      buildPigeonRig(rig, traits, { idle: mood === "happy" || mood === "neutral" });
-      // Apply mood-specific animation class
-      rig.classList.remove("feral","rehab","low-hp");
-      if (mood === "feral") rig.classList.add("feral");
-      if (mood === "rehab") rig.classList.add("rehab");
+      if (_pigeon.hatched) {
+        buildPigeonRig(rig, traits, { idle: mood === "happy" || mood === "neutral" });
+        // Apply mood-specific animation class
+        rig.classList.remove("feral","rehab","low-hp");
+        if (mood === "feral") rig.classList.add("feral");
+        if (mood === "rehab") rig.classList.add("rehab");
+      } else {
+        // Fallback for unhatched egg (though _loadPigeons tries to avoid this being active)
+        const daysDone = (_pigeon.incubationLog ?? []).length;
+        let eggState = "egg_whole";
+        if (daysDone === 1) eggState = "egg_crack1";
+        if (daysDone >= 2) eggState = "egg_crack2";
+        rig.innerHTML = `<img src="${PIGEON_CONFIG.eggPath(eggState)}" class="egg-img" style="max-width:200px">`;
+      }
     }
 
     // Mood badge
@@ -999,11 +1030,37 @@ const App = (() => {
       slotsWrap.innerHTML = "";
       pigeons.forEach(p => {
         const isActive = p.id === (_userData.activePigeonId || _user.uid);
+        const today = todayStr();
         const card = document.createElement("div");
         card.className = `nest-pigeon-card ${isActive ? 'active' : 'inactive'}`;
-        const statusText = p.hatched
-          ? `LVL ${p.level || 1} • ${p.bond || 0}% BOND`
-          : `EGG • ${p.incubationLog?.length || 0}/3 DAYS`;
+
+        const daysDone = (p.incubationLog ?? []).length;
+        const usedToday = p.lastActionDate === today || (_user && _isActionLocked(_user.uid, `egg_${p.id}`));
+
+        let statusText = "";
+        let actionsHtml = "";
+
+        if (p.hatched) {
+          statusText = `LVL ${p.level || 1} • ${p.bond || 0}% BOND`;
+          if (!isActive) {
+            actionsHtml = `<button class="btn-ghost btn-sm btn-switch" data-id="${p.id}">Switch</button>`;
+          }
+        } else {
+          statusText = `EGG • ${daysDone}/3 DAYS`;
+          if (daysDone >= 3) {
+            actionsHtml = `<button class="btn-primary btn-sm btn-hatch" data-id="${p.id}">HATCH!</button>`;
+          } else if (usedToday) {
+            actionsHtml = `<span class="nest-egg-done">Done for today</span>`;
+          } else {
+            actionsHtml = `
+              <div class="nest-egg-actions">
+                <button class="btn-nest-action" data-id="${p.id}" data-action="shake" title="Shake">🫳</button>
+                <button class="btn-nest-action" data-id="${p.id}" data-action="heat" title="Heat">🔥</button>
+                <button class="btn-nest-action" data-id="${p.id}" data-action="lick" title="Lick">👅</button>
+              </div>
+            `;
+          }
+        }
 
         card.innerHTML = `
           <div class="nest-pigeon-info">
@@ -1013,14 +1070,22 @@ const App = (() => {
             </div>
             <div class="nest-pigeon-status">${statusText}</div>
           </div>
-          ${!isActive ? `<button class="btn-ghost btn-sm btn-switch" data-id="${p.id}">Switch</button>` : ''}
+          <div class="nest-card-actions">
+            ${actionsHtml}
+          </div>
         `;
         slotsWrap.appendChild(card);
       });
 
-      // Handle Switch Clicks
+      // Wire up buttons
       slotsWrap.querySelectorAll(".btn-switch").forEach(btn => {
         btn.onclick = () => _switchPigeon(btn.dataset.id);
+      });
+      slotsWrap.querySelectorAll(".btn-hatch").forEach(btn => {
+        btn.onclick = () => _hatchFromNest(btn.dataset.id);
+      });
+      slotsWrap.querySelectorAll(".btn-nest-action").forEach(btn => {
+        btn.onclick = () => _doEggAction(btn.dataset.action, btn.dataset.id);
       });
     }
 
@@ -1122,7 +1187,17 @@ const App = (() => {
     if (!_pigeon || !_userData) return;
 
     const rigEl = document.getElementById("profile-rig");
-    if (rigEl) buildPigeonRig(rigEl, _pigeon.traits, { idle: true });
+    if (rigEl) {
+      if (_pigeon.hatched) {
+        buildPigeonRig(rigEl, _pigeon.traits, { idle: true });
+      } else {
+        const daysDone = (_pigeon.incubationLog ?? []).length;
+        let eggState = "egg_whole";
+        if (daysDone === 1) eggState = "egg_crack1";
+        if (daysDone >= 2) eggState = "egg_crack2";
+        rigEl.innerHTML = `<img src="${PIGEON_CONFIG.eggPath(eggState)}" class="egg-img" style="max-width:200px">`;
+      }
+    }
 
     const nameEl = document.getElementById("profile-name");
     if (nameEl) nameEl.textContent = _pigeon.name ?? "—";
