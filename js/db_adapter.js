@@ -46,7 +46,15 @@ const DB = {
         const rootSnap = await db.ref(`pigeons/${uid}`).once('value');
         if (rootSnap.exists()) {
           const val = rootSnap.val();
-          if (val.stats || val.incubationLog) return { id: uid, ...val };
+          // Clean legacy data: remove any sub-nodes that are actually other pigeons
+          const cleaned = {};
+          Object.keys(val).forEach(k => {
+            if (typeof val[k] !== 'object' || k === 'stats' || k === 'traits' || k === 'incubationLog') {
+              cleaned[k] = val[k];
+            }
+          });
+
+          if (cleaned.stats || cleaned.incubationLog) return { id: uid, ...cleaned };
         }
       }
       return null;
@@ -62,24 +70,38 @@ const DB = {
       if (!snap.exists()) return [];
       const data = snap.val();
 
-      const pigeons = [];
+      const results = new Map();
 
-      // Check for nested pigeons first (multi-pigeon format)
-      // This helps prioritize sub-nodes which should be the standard moving forward
+      // 1. Check for nested pigeons (multi-pigeon format)
       Object.keys(data).forEach(k => {
         const val = data[k];
         // A pigeon sub-node must be an object with stats OR an incubationLog
         if (val && typeof val === 'object' && (val.stats || val.incubationLog)) {
-          pigeons.push({ id: k, ...val });
+          results.set(k, { id: k, ...val });
         }
       });
 
-      // Check for legacy pigeon at root ONLY IF it's not already in the list as a sub-node
-      if ((data.stats || data.incubationLog) && !pigeons.find(p => p.id === uid)) {
-        pigeons.push({ id: uid, ...data });
+      // 2. Check for legacy pigeon at root
+      if ((data.stats || data.incubationLog)) {
+        // Clean legacy data
+        const cleaned = {};
+        Object.keys(data).forEach(k => {
+          // Keep only non-pigeon properties for the legacy pigeon object
+          if (!results.has(k) && (typeof data[k] !== 'object' || k === 'stats' || k === 'traits' || k === 'incubationLog')) {
+            cleaned[k] = data[k];
+          }
+        });
+
+        // If we already have a sub-node for this ID, merge them (sub-node wins)
+        const existing = results.get(uid);
+        if (existing) {
+          results.set(uid, { ...cleaned, ...existing, id: uid });
+        } else {
+          results.set(uid, { id: uid, ...cleaned });
+        }
       }
 
-      return pigeons;
+      return Array.from(results.values());
     } catch (err) {
       console.error("[DB] getPigeons failed:", err);
       return [];
