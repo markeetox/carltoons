@@ -256,6 +256,10 @@ input { font-family: var(--font-body); }
   background: var(--clr-gold); color: #fff; font-size: 10px; font-weight: 800;
   padding: 2px 8px; border-radius: var(--r-pill); margin-left: 8px;
 }
+.nest-pigeon-nesting-tag {
+  background: var(--clr-surface2); color: var(--clr-text-dim); font-size: 10px; font-weight: 800;
+  padding: 2px 8px; border-radius: var(--r-pill); margin-left: 8px;
+}
 
 .nest-card-actions {
   display: flex; align-items: center; gap: 8px;

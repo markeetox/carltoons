@@ -1043,7 +1043,7 @@ const App = (() => {
         if (p.hatched) {
           statusText = `LVL ${p.level || 1} • ${p.bond || 0}% BOND`;
           if (!isActive) {
-            actionsHtml = `<button class="btn-ghost btn-sm btn-switch" data-id="${p.id}">Switch</button>`;
+            actionsHtml = `<button class="btn-ghost btn-sm btn-switch" data-id="${p.id}">Make Active</button>`;
           }
         } else {
           statusText = `EGG • ${daysDone}/3 DAYS`;
@@ -1066,7 +1066,7 @@ const App = (() => {
           <div class="nest-pigeon-info">
             <div class="nest-pigeon-name">
               ${p.name || (p.hatched ? "Pigeon" : "New Egg")}
-              ${isActive ? '<span class="nest-pigeon-active-tag">Active</span>' : ''}
+              ${isActive ? '<span class="nest-pigeon-active-tag">Active</span>' : '<span class="nest-pigeon-nesting-tag">Nesting</span>'}
             </div>
             <div class="nest-pigeon-status">${statusText}</div>
           </div>
@@ -1152,17 +1152,6 @@ const App = (() => {
 
   async function _switchPigeon(id, force = false) {
     const now = Date.now();
-    const lastSwitch = _userData.lastSwitchDate || 0;
-    const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
-
-    // Allow switching if forced (new breeding) OR if the current pigeon is an egg
-    const isCurrentPigeonEgg = _pigeon && !_pigeon.hatched;
-
-    if (!force && !isCurrentPigeonEgg && (now - lastSwitch < ONE_WEEK)) {
-      const daysLeft = Math.ceil((ONE_WEEK - (now - lastSwitch)) / (24 * 60 * 60 * 1000));
-      showToast(`⏳ You can switch again in ${daysLeft} days.`);
-      return;
-    }
 
     try {
       await DB.updatePlayer(_user.uid, {
