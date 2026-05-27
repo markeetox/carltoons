@@ -40,7 +40,7 @@ Copy and paste these into your **Realtime Database > Rules** tab. These rules en
 }
 ```
 
-> **Note on Data Structure:** The game uses a nested structure for pigeons (`pigeons/{uid}/{pigeonId}`). The rules above ensure that users can only write to their own pigeon sub-nodes.
+> **Note on Data Structure:** The game uses a nested structure for pigeons (`pigeons/{uid}/{pigeonId}`). The rules above ensure that users can only write to their own pigeon sub-nodes. If you are migrating from an older version, the game also supports a "legacy" format where the primary pigeon is stored at the root of the user's node (`pigeons/{uid}`).
 
 ### 2. Indexes
 
