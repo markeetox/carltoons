@@ -991,7 +991,7 @@ const App = (() => {
     if (streakBadge) streakBadge.textContent = streak;
 
     const navNest = document.getElementById("nav-nest");
-    if (navNest) navNest.style.display = streak >= 5 ? "flex" : "none";
+    if (navNest) navNest.style.display = "flex";
 
     const breedSection = document.getElementById("breed-section");
     const parentName = document.getElementById("parent-name");
@@ -999,6 +999,16 @@ const App = (() => {
     const pigeons = await DB.getPigeons(_user.uid);
     const slotsWrap = document.getElementById("nest-slots");
     const visualSlots = document.getElementById("nest-visual-slots");
+
+    const nestIntro = document.querySelector(".nest-intro");
+    if (nestIntro) {
+      if (streak < 5) {
+        const remaining = 5 - streak;
+        nestIntro.innerHTML = `<span class="nest-locked-msg"><i class="fa-solid fa-lock"></i> Nest Locked: Login <strong>${remaining} more day${remaining === 1 ? '' : 's'}</strong> in a row to activate the nest.</span>`;
+      } else {
+        nestIntro.innerHTML = `You have a 5-day streak! Your nest is active. Breeding and multi-pigeon management is enabled.`;
+      }
+    }
 
     if (visualSlots) {
       visualSlots.innerHTML = "";
@@ -1076,6 +1086,24 @@ const App = (() => {
         `;
         slotsWrap.appendChild(card);
       });
+
+      // Add locked placeholders if streak < 5 and less than 3 pigeons
+      if (streak < 5) {
+        for (let i = pigeons.length; i < 3; i++) {
+          const locked = document.createElement("div");
+          locked.className = "nest-pigeon-card locked";
+          locked.innerHTML = `
+            <div class="nest-pigeon-info">
+              <div class="nest-pigeon-name">Locked Slot</div>
+              <div class="nest-pigeon-status">Login ${5 - streak} more days to unlock</div>
+            </div>
+            <div class="nest-card-actions">
+              <i class="fa-solid fa-lock" style="color:var(--clr-text-muted)"></i>
+            </div>
+          `;
+          slotsWrap.appendChild(locked);
+        }
+      }
 
       // Wire up buttons
       slotsWrap.querySelectorAll(".btn-switch").forEach(btn => {
