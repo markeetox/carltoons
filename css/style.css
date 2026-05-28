@@ -247,7 +247,20 @@ input { font-family: var(--font-body); }
 }
 .nest-pigeon-card.active { border-color: var(--clr-gold); border-width: 2px; }
 .nest-pigeon-card.inactive { background: #fdfdfd; }
+.nest-pigeon-card.locked {
+  background: var(--clr-surface2);
+  border-style: dashed;
+  opacity: 0.7;
+}
 .nest-pigeon-card .pigeon-rig { --rig-size: 100px; }
+
+.nest-locked-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--clr-red);
+  font-weight: 600;
+}
 
 .nest-pigeon-info { flex: 1; }
 .nest-pigeon-name { font-family: var(--font-display); font-size: 18px; color: var(--clr-text); }
