@@ -366,13 +366,13 @@ input { font-family: var(--font-body); }
    Everything else gets its own subtle motion.
 ── */
 @keyframes torso-breathe {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0)     scaleY(1);    }
-  50%       { transform: translate(-50%, -50%) translateY(-4px)  scaleY(1.02); }
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%       { transform: translate(-50%, -50%) scale(1.03); }
 }
 @keyframes head-bob {
   0%, 100% { transform: translate(-50%, -50%) rotate(-2deg) translateY(0);    }
-  35%       { transform: translate(-50%, -50%) rotate( 2deg) translateY(-3px); }
-  70%       { transform: translate(-50%, -50%) rotate(-1deg) translateY(1px);  }
+  35%       { transform: translate(-50%, -50%) rotate( 2deg) translateY(-1px); }
+  70%       { transform: translate(-50%, -50%) rotate(-1deg) translateY(0.5px); }
 }
 @keyframes wing-drift {
   0%, 100% { transform: translate(-50%, -50%) rotate(0deg)   translateY(0);   }
