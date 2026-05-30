@@ -39,9 +39,9 @@ const DB = {
     try {
       // 1. Try the specific sub-node (new format)
       const snap = await db.ref(`pigeons/${uid}/${id}`).once('value');
-      if (snap.exists()) return { id, ...snap.val() };
+      let pigeon = snap.exists() ? { id, ...snap.val() } : null;
 
-      // 2. If no sub-node and asking for the main pigeon (pigeonId == uid), check root (legacy)
+      // 2. Check root (legacy) if it's the primary pigeon
       if (id === uid) {
         const rootSnap = await db.ref(`pigeons/${uid}`).once('value');
         if (rootSnap.exists()) {
@@ -54,10 +54,16 @@ const DB = {
             }
           });
 
-          if (cleaned.stats || cleaned.incubationLog) return { id: uid, ...cleaned };
+          if (cleaned.stats || cleaned.incubationLog) {
+            if (pigeon) {
+              return { ...cleaned, ...pigeon, id: uid }; // pigeon sub-node wins on conflicts
+            } else {
+              return { id: uid, ...cleaned };
+            }
+          }
         }
       }
-      return null;
+      return pigeon;
     } catch (err) {
       console.error("[DB] getPigeon failed:", err);
       return null;
