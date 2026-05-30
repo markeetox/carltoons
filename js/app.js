@@ -744,12 +744,11 @@ const App = (() => {
       await DB.setPigeon(_user.uid, pid, pigeonData);
       await DB.updatePlayer(_user.uid, { hasPigeon: true, activePigeonId: pid });
 
-      _pigeon = pigeonData;
+      // Refresh all pigeon data and routing
       _userData.hasPigeon = true;
       _userData.activePigeonId = pid;
-
-      _renderHomeScreen();
-      _renderProfileScreen();
+      await _loadPigeons();
+      _routeAfterLoad();
     } catch (err) {
       console.error("[App] Save pigeon failed:", err);
       showToast("Failed to hatch pigeon. Check permissions.");
@@ -1426,6 +1425,7 @@ const App = (() => {
           }
         }
         if (screen === "profile") _renderProfileScreen();
+        if (screen === "nest")    _renderNestScreen();
         showScreen(screen);
       });
     });
