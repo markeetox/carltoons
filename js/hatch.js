@@ -116,10 +116,10 @@ const Hatch = (() => {
     if (step.layers.includes("head")) {
       const headEl = revealRig.querySelector(".p-layer.head");
       if (headEl) {
-        headEl.style.transform = "translateY(-30px)";
+        headEl.style.transform = "translate(-50%, -50%) translateY(-30px)";
         headEl.style.transition = "opacity .5s ease, transform .5s cubic-bezier(.22,.6,.36,1.4)";
         requestAnimationFrame(() => {
-          headEl.style.transform = "translateY(0)";
+          headEl.style.transform = "translate(-50%, -50%) translateY(0)";
         });
       }
     }
@@ -128,10 +128,10 @@ const Hatch = (() => {
     if (step.layers.includes("wings")) {
       const wingEl = revealRig.querySelector(".p-layer.wings");
       if (wingEl) {
-        wingEl.style.transform = "rotate(-10deg)";
+        wingEl.style.transform = "translate(-50%, -50%) rotate(-10deg)";
         wingEl.style.transition = "opacity .6s ease, transform .6s ease-out";
         requestAnimationFrame(() => {
-          wingEl.style.transform = "rotate(0deg)";
+          wingEl.style.transform = "translate(-50%, -50%) rotate(0deg)";
         });
       }
     }
@@ -182,6 +182,83 @@ const Hatch = (() => {
       document.getElementById("bottom-nav").classList.remove("hidden");
       showScreen("home");
     });
+
+    document.getElementById("btn-hatch-share")?.addEventListener("click", _shareHatch);
+  }
+
+  async function _shareHatch() {
+    const name = document.getElementById("pigeon-name-input").value.trim() || "Pigeon";
+    const btn = document.getElementById("btn-hatch-share");
+    const originalIcon = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-camera fa-spin"></i>';
+
+    try {
+      const shareBox = document.createElement("div");
+      shareBox.className = "share-box-temp";
+      shareBox.innerHTML = `
+        <div class="pigeon-scene">
+          <div class="pigeon-bg"></div>
+          <div class="pigeon-rig idle" id="share-rig"></div>
+          <div class="share-stats-overlay">
+            <h2 class="share-name">${name}</h2>
+            <p class="share-level">Newly Hatched!</p>
+          </div>
+          <div class="share-footer">
+            <span>coo.wutju.com</span>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(shareBox);
+
+      const shareRig = shareBox.querySelector("#share-rig");
+      buildPigeonRig(shareRig, _traits, { idle: true });
+
+      await new Promise(r => setTimeout(r, 500));
+
+      const canvas = await html2canvas(shareBox, {
+        backgroundColor: "#1a1a1a",
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+
+      shareBox.remove();
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      const file = new File([blob], 'my_new_pigeon.png', { type: 'image/png' });
+
+      // If we have a user ID from app.js, use it for referral
+      let shareUrl = "https://coo.wutju.com";
+      if (typeof auth !== 'undefined' && auth.currentUser) {
+        shareUrl = `${window.location.origin}${window.location.pathname}?ref=${auth.currentUser.uid}`;
+      }
+
+      const shareData = {
+        title: `Meet ${name}!`,
+        text: `I just hatched a new pigeon on Pigeons! Raise your own at coo.wutju.com`,
+        url: shareUrl,
+        files: [file]
+      };
+
+      if (navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'my_new_pigeon.png';
+        link.href = dataUrl;
+        link.click();
+        await navigator.clipboard.writeText(shareUrl);
+        showToast("Image saved & Invite link copied!");
+      }
+    } catch (err) {
+      console.error("[Hatch] Share failed:", err);
+      showToast("Sharing failed.");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalIcon;
+    }
   }
 
   /* ── Public init (called once from app.js) ── */
