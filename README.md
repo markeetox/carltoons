@@ -4,19 +4,29 @@ A responsive Progressive Web App (PWA) Pigeon Tamagotchi game with real-time mul
 
 ## Firebase Setup Instructions
 
-To make the game fully functional (especially the Leaderboard and Battles), you must configure your Firebase project with **Realtime Database**.
+To make the game fully functional (especially the Leaderboard, Nest, and Battles), you must configure your Firebase project with **Realtime Database**.
 
-> **IMPORTANT:** You must deploy the Realtime Database Security Rules and Indexes below to avoid "Missing or insufficient permissions" errors on the leaderboard and battle screens.
+### Step-by-Step Configuration
 
-### 1. Realtime Database Security Rules
+Follow these steps to set up the required security rules and indexes for the multi-pigeon feature.
 
-Copy and paste these into your **Realtime Database > Rules** tab. These rules ensure that players can only modify their own data and that battles are handled safely.
+#### 1. Enable Realtime Database
+- Go to the [Firebase Console](https://console.firebase.google.com/).
+- Select your project.
+- Click on **Build > Realtime Database** in the left sidebar.
+- Click **Create Database**, select a location, and start in **Locked Mode**.
+
+#### 2. Apply Security Rules & Indexes
+- Navigate to the **Rules** tab in the Realtime Database section.
+- Copy the entire JSON block below and replace the existing rules.
+- Click **Publish**.
 
 ```json
 {
   "rules": {
     "players": {
       ".read": "auth != null",
+      ".indexOn": ["elo", "username"],
       "$uid": {
         ".write": "auth != null && auth.uid == $uid"
       }
@@ -32,38 +42,6 @@ Copy and paste these into your **Realtime Database > Rules** tab. These rules en
     },
     "battles": {
       ".read": "auth != null",
-      "$battleId": {
-        ".write": "auth != null && (!data.exists() || data.child('hostId').val() == auth.uid || data.child('guestId').val() == auth.uid || !data.child('guestId').exists())"
-      }
-    }
-  }
-}
-```
-
-> **Note on Data Structure:** The game uses a nested structure for pigeons (`pigeons/{uid}/{pigeonId}`). The rules above ensure that users can only write to their own pigeon sub-nodes. If you are migrating from an older version, the game also supports a "legacy" format where the primary pigeon is stored at the root of the user's node (`pigeons/{uid}`).
-
-### 2. Indexes
-
-Realtime Database requires explicit indexing for high-performance queries. Update your rules to include `.indexOn` for `elo` and `status`:
-
-```json
-{
-  "rules": {
-    "players": {
-      ".read": "auth != null",
-      ".indexOn": ["elo", "username"],
-      "$uid": {
-        ".write": "auth != null && auth.uid == $uid"
-      }
-    },
-    "pigeons": {
-      ".read": "auth != null",
-      "$uid": {
-        ".write": "auth != null && auth.uid == $uid"
-      }
-    },
-    "battles": {
-      ".read": "auth != null",
       ".indexOn": ["status", "guestId", "hostId"],
       "$battleId": {
         ".write": "auth != null && (!data.exists() || data.child('hostId').val() == auth.uid || data.child('guestId').val() == auth.uid || !data.child('guestId').exists())"
@@ -72,6 +50,14 @@ Realtime Database requires explicit indexing for high-performance queries. Updat
   }
 }
 ```
+
+### Understanding the Multi-Pigeon Structure
+
+The game uses a nested structure to support multiple pigeons per user. This is handled at the `pigeons/{uid}/{pigeonId}` path.
+
+- **Migration Support:** If you have data from a version where the pigeon was stored directly at `pigeons/{uid}`, the `getPigeons` logic in `js/db_adapter.js` will automatically detect and merge this "legacy" pigeon into your collection.
+- **Access Control:** The security rules above allow you to read all player/pigeon data (required for the leaderboard and battles) but restrict writing only to your own profile and pigeons.
+- **Performance:** The `.indexOn` properties ensure that the Leaderboard (`elo`), Player Search (`username`), and Matchmaking/Challenges (`status`, `guestId`, `hostId`) remain fast as the player base grows.
 
 ---
 
