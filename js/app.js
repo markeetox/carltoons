@@ -1137,6 +1137,7 @@ const App = (() => {
       showToast("🔥 You need a 5-day streak to breed!");
       return;
     }
+    // Strict enforcement of 3-pigeon limit
     const pigeons = await DB.getPigeons(_user.uid);
     if (pigeons.length >= 3) {
       showToast("🪹 Your nest is full! (Max 3)");
@@ -1385,7 +1386,7 @@ const App = (() => {
       const shareUrl = `${window.location.origin}${window.location.pathname}?ref=${_user.uid}`;
       const shareData = {
         title: `Meet ${_pigeon.name}!`,
-        text: `Check out my pigeon on Pigeons by Carltoons! Join me and raise your own.`,
+        text: `Check out my pigeon on Pigeons! Use my link to join and I'll get an Earthworm bonus: ${shareUrl}`,
         url: shareUrl,
         files: [file]
       };

@@ -236,7 +236,7 @@ const Hatch = (() => {
 
       const shareData = {
         title: `Meet ${name}!`,
-        text: `I just hatched a new pigeon on Pigeons! Raise your own at coo.wutju.com`,
+        text: `I just hatched a new pigeon on Pigeons! Use my link to join and I'll get an Earthworm bonus: ${shareUrl}`,
         url: shareUrl,
         files: [file]
       };
