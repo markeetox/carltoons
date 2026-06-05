@@ -1147,16 +1147,39 @@ const App = (() => {
       return;
     }
 
-    // Strict enforcement of 3-pigeon limit
+    // Strict enforcement of 3-pigeon limit with sacrifice option
     const pigeons = await DB.getPigeons(_user.uid);
+    let pigeonToSacrifice = null;
+
     if (pigeons.length >= 3) {
-      showToast("🪹 Your nest is full! (Max 3)");
-      return;
+      const nesting = pigeons.filter(p => p.id !== (_userData.activePigeonId || _user.uid));
+      if (nesting.length === 0) {
+        showToast("🪹 You need at least one nesting pigeon to sacrifice!");
+        return;
+      }
+
+      const options = nesting.map((p, i) => `${i + 1}: ${p.name || 'Egg'}`).join("\n");
+      const choice = prompt(`🪹 Your nest is full! To breed a new egg, you must sacrifice a nesting pigeon. Type the number to sacrifice (or cancel):\n\n${options}`);
+
+      const idx = parseInt(choice) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= nesting.length) {
+        showToast("Breeding cancelled.");
+        return;
+      }
+      pigeonToSacrifice = nesting[idx];
+      if (!confirm(`Are you sure you want to sacrifice ${pigeonToSacrifice.name || 'this egg'}? This cannot be undone.`)) {
+        return;
+      }
     }
 
     if (!confirm("Breed a new egg? This will inherit traits from your active pigeon.")) return;
 
     try {
+      if (pigeonToSacrifice) {
+        await DB.deletePigeon(_user.uid, pigeonToSacrifice.id);
+        showToast(`🕊️ ${pigeonToSacrifice.name || 'Pigeon'} has been sacrificed to the Tooniseum.`);
+      }
+
       // Create new egg with exactly one inherited trait
       const parentTraits = _pigeon.traits;
       const traitKeys = Object.keys(parentTraits);
