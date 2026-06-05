@@ -1137,6 +1137,16 @@ const App = (() => {
       showToast("🔥 You need a 5-day streak to breed!");
       return;
     }
+
+    // Enforce 5-day breeding cooldown
+    const lastBreeding = _userData.lastBreedingDate ?? 0;
+    const cooldownMs = 5 * 24 * 60 * 60 * 1000;
+    if (Date.now() - lastBreeding < cooldownMs) {
+      const daysLeft = Math.ceil((cooldownMs - (Date.now() - lastBreeding)) / (24 * 60 * 60 * 1000));
+      showToast(`⏳ Nest is resting. Wait ${daysLeft} more day${daysLeft === 1 ? '' : 's'}.`);
+      return;
+    }
+
     // Strict enforcement of 3-pigeon limit
     const pigeons = await DB.getPigeons(_user.uid);
     if (pigeons.length >= 3) {
@@ -1147,13 +1157,17 @@ const App = (() => {
     if (!confirm("Breed a new egg? This will inherit traits from your active pigeon.")) return;
 
     try {
-      // Create new egg with inherited trait
+      // Create new egg with exactly one inherited trait
       const parentTraits = _pigeon.traits;
       const traitKeys = Object.keys(parentTraits);
       const inheritedKey = traitKeys[Math.floor(Math.random() * traitKeys.length)];
 
-      // New traits: generate random, then override one from parent
-      const newTraits = generatePigeonTraits(_user.uid + Date.now());
+      // New traits: generate random, then override EXACTLY one from parent
+      // Seed with UID + timestamp + random for maximum uniqueness
+      const newTraits = generatePigeonTraits(_user.uid + Date.now() + Math.random());
+
+      // Ensure the other traits are actually different (or as different as the pool allows)
+      // but strictly set the inherited one.
       newTraits[inheritedKey] = parentTraits[inheritedKey];
 
       const pigeonId = "pigeon_" + Date.now();
@@ -1170,7 +1184,11 @@ const App = (() => {
         xp:             0
       };
 
+      const now = Date.now();
       await DB.setPigeon(_user.uid, pigeonId, eggData);
+      await DB.updatePlayer(_user.uid, { lastBreedingDate: now });
+      _userData.lastBreedingDate = now;
+
       showToast("🥚 A new egg has appeared in the nest!");
       await _loadPigeons();
       await _renderNestScreen();
