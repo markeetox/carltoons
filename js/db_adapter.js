@@ -81,14 +81,15 @@ const DB = {
       // 1. Check for nested pigeons (multi-pigeon format)
       Object.keys(data).forEach(k => {
         const val = data[k];
-        // A pigeon sub-node must be an object with stats OR an incubationLog
-        if (val && typeof val === 'object' && (val.stats || val.incubationLog)) {
+        // A pigeon sub-node must be an object with traits or stats
+        // (New eggs only have traits/id/name initially)
+        if (val && typeof val === 'object' && (val.traits || val.stats)) {
           results.set(k, { id: k, ...val });
         }
       });
 
       // 2. Check for legacy pigeon at root
-      if ((data.stats || data.incubationLog)) {
+      if ((data.traits || data.stats)) {
         // Clean legacy data
         const cleaned = {};
         Object.keys(data).forEach(k => {

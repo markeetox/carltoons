@@ -442,7 +442,15 @@ input { font-family: var(--font-body); }
 .pigeon-rig.victory { animation: victory-hop .9s ease-in-out; }
 
 /* ── Mirrored (opponent in battle) ── */
-.pigeon-rig.mirrored { transform: scaleX(-1); }
+.pigeon-rig.mirrored { transform: scaleX(-1) translate(50%, -50%); }
+.pigeon-rig.mirrored.victory { animation: victory-hop-mirrored .9s ease-in-out; }
+@keyframes victory-hop-mirrored {
+  0%, 100% { transform: scaleX(-1) translate(50%, -50%) translateY(0)     scaleY(1);    }
+  20%       { transform: scaleX(-1) translate(50%, -50%) translateY(-22px) scaleY(1.05); }
+  40%       { transform: scaleX(-1) translate(50%, -50%) translateY(0)     scaleY(.9);   }
+  60%       { transform: scaleX(-1) translate(50%, -50%) translateY(-14px) scaleY(1.03); }
+  80%       { transform: scaleX(-1) translate(50%, -50%) translateY(0)     scaleY(.95);  }
+}
 
 /* ── Silhouette (hatch reveal) ── */
 .pigeon-rig.silhouette .p-layer { filter: brightness(0); }
