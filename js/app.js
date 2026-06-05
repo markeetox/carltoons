@@ -1172,7 +1172,8 @@ const App = (() => {
 
       await DB.setPigeon(_user.uid, pigeonId, eggData);
       showToast("🥚 A new egg has appeared in the nest!");
-      _renderNestScreen();
+      await _loadPigeons();
+      await _renderNestScreen();
     } catch (err) {
       console.error("[App] Breeding failed:", err);
     }
