@@ -46,12 +46,11 @@ const DB = {
         const rootSnap = await db.ref(`pigeons/${uid}`).once('value');
         if (rootSnap.exists()) {
           const val = rootSnap.val();
-          // Clean legacy data: remove any sub-nodes that are actually other pigeons
           const cleaned = {};
           let hasLegacyData = false;
           Object.keys(val).forEach(k => {
             // Legacy properties are root level keys that aren't pigeon IDs
-            if (k === 'stats' || k === 'traits' || k === 'incubationLog' || k === 'name' || k === 'hatched') {
+            if (k === 'stats' || k === 'traits' || k === 'incubationLog' || k === 'name' || k === 'hatched' || k === 'bond') {
               cleaned[k] = val[k];
               hasLegacyData = true;
             } else if (typeof val[k] !== 'object') {
@@ -60,8 +59,14 @@ const DB = {
           });
 
           if (hasLegacyData) {
+            // Ensure legacy data is marked as hatched if it has stats
+            if (cleaned.stats && cleaned.hatched === undefined) cleaned.hatched = true;
+
             if (pigeon) {
-              return { ...cleaned, ...pigeon, id: uid }; // pigeon sub-node wins on conflicts
+              const merged = { ...cleaned, ...pigeon, id: uid };
+              // Protect hatched state: if either was hatched, the result is hatched
+              if (cleaned.hatched === true || pigeon.hatched === true) merged.hatched = true;
+              return merged;
             } else {
               return { id: uid, ...cleaned };
             }
@@ -86,28 +91,33 @@ const DB = {
       // 1. Check for nested pigeons (multi-pigeon format)
       Object.keys(data).forEach(k => {
         const val = data[k];
-        // A pigeon sub-node must be an object with traits or stats
-        // (New eggs only have traits/id/name initially)
-        if (val && typeof val === 'object' && (val.traits || val.stats)) {
+        // A pigeon sub-node must be an object with traits, stats, or incubationLog
+        // (New eggs only have traits/id/name/incubationLog initially)
+        if (val && typeof val === 'object' && (val.traits || val.stats || val.incubationLog)) {
           results.set(k, { id: k, ...val });
         }
       });
 
       // 2. Check for legacy pigeon at root
-      if ((data.traits || data.stats)) {
-        // Clean legacy data
+      if ((data.traits || data.stats || data.incubationLog)) {
         const cleaned = {};
         Object.keys(data).forEach(k => {
           // Keep only non-pigeon properties for the legacy pigeon object
-          if (!results.has(k) && (typeof data[k] !== 'object' || k === 'stats' || k === 'traits' || k === 'incubationLog')) {
+          if (!results.has(k) && (typeof data[k] !== 'object' || k === 'stats' || k === 'traits' || k === 'incubationLog' || k === 'hatched')) {
             cleaned[k] = data[k];
           }
         });
 
+        // Ensure legacy data is marked as hatched if it has stats
+        if (cleaned.stats && cleaned.hatched === undefined) cleaned.hatched = true;
+
         // If we already have a sub-node for this ID, merge them (sub-node wins)
         const existing = results.get(uid);
         if (existing) {
-          results.set(uid, { ...cleaned, ...existing, id: uid });
+          const merged = { ...cleaned, ...existing, id: uid };
+          // Protect hatched state
+          if (cleaned.hatched === true || existing.hatched === true) merged.hatched = true;
+          results.set(uid, merged);
         } else {
           results.set(uid, { id: uid, ...cleaned });
         }
@@ -155,8 +165,23 @@ const DB = {
         }
       });
 
+      // If we have stats but 'hatched' is missing, it's definitely a hatched pigeon
+      if (updates.stats && updates.hatched === undefined) {
+        updates.hatched = true;
+      }
+
       if (hasLegacy) {
         console.log(`[DB] Migrating legacy pigeon for ${uid}`);
+        // Ensure ID is included
+        updates.id = uid;
+        updates.uid = uid;
+
+        // Check if a sub-node already exists and is hatched
+        const subSnap = await db.ref(`pigeons/${uid}/${uid}`).once('value');
+        if (subSnap.exists() && subSnap.val().hatched) {
+          updates.hatched = true;
+        }
+
         // Move to sub-node
         await db.ref(`pigeons/${uid}/${uid}`).update(updates);
         // Remove from root
@@ -174,6 +199,25 @@ const DB = {
       await db.ref(`pigeons/${uid}/${pigeonId}`).remove();
     } catch (err) {
       console.error("[DB] deletePigeon failed:", err);
+    }
+  },
+  async repairPigeonData(uid) {
+    if (!uid || !auth.currentUser) return;
+    try {
+      // 1. Perform migration
+      await this.migrateLegacyPigeon(uid);
+
+      // 2. Explicitly clear any remaining root keys just in case
+      const legacyKeys = ['stats', 'traits', 'incubationLog', 'name', 'hatched', 'bond', 'level', 'xp', 'hatchDate', 'lastFed', 'lastPlayed', 'lastTrained', 'lastActionDate', 'feralSince', 'rehabDay'];
+      const removals = {};
+      legacyKeys.forEach(k => removals[k] = null);
+      await db.ref(`pigeons/${uid}`).update(removals);
+
+      console.log(`[DB] Repair complete for ${uid}`);
+      return true;
+    } catch (err) {
+      console.error("[DB] Repair failed:", err);
+      return false;
     }
   },
 

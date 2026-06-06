@@ -176,6 +176,13 @@ const App = (() => {
       }
     });
 
+    // Repair Account button
+    document.addEventListener("click", async (e) => {
+      if (e.target.closest("#btn-repair-account")) {
+        await _repairData();
+      }
+    });
+
     // Share button
     document.addEventListener("click", (e) => {
       if (e.target.closest("#btn-home-share")) {
@@ -543,6 +550,10 @@ const App = (() => {
       _renderHomeScreen();
       _renderProfileScreen();
       _renderNestScreen();
+
+      // Console debug info
+      console.log(`[App] Current screen: home | Active pigeon ID: ${_pigeon.id} | Hatched: ${_pigeon.hatched}`);
+
       // Show daily mood popup after a short delay
       setTimeout(_showMoodPopup, 800);
     }
@@ -1072,7 +1083,7 @@ const App = (() => {
         card.className = `nest-pigeon-card ${isActive ? 'active' : 'inactive'}`;
 
         const daysDone = (p.incubationLog ?? []).length;
-        const usedToday = p.lastActionDate === today || (_user && _isActionLocked(_user.uid, `egg_${p.id}`));
+        const usedToday = p.lastActionDate === todayStr() || (_user && _isActionLocked(_user.uid, `egg_${p.id}`));
 
         let statusText = "";
         let actionsHtml = "";
@@ -1164,6 +1175,11 @@ const App = (() => {
 
   function _initNestActions() {
     document.getElementById("btn-breed")?.addEventListener("click", _breedEgg);
+    document.getElementById("btn-nest-refresh")?.addEventListener("click", async () => {
+      showToast("Refreshing nest...");
+      await _loadPigeons();
+      await _renderNestScreen();
+    });
   }
 
   async function _breedEgg() {
@@ -1225,8 +1241,9 @@ const App = (() => {
       const entropy = _user.uid + Date.now() + Math.random().toString(36).substring(2);
       const newTraits = generatePigeonTraits(entropy);
 
-      // Ensure the other traits are actually different (or as different as the pool allows)
-      // but strictly set the inherited one.
+      // Ensure the inherited trait is correctly applied.
+      // Random pool generation (generatePigeonTraits) already provides unique results
+      // given the high-entropy seed. We just override one specifically.
       newTraits[inheritedKey] = parentTraits[inheritedKey];
 
       // CRITICAL: If we inherit a leg, we must match both leg_far and leg_near
@@ -1781,6 +1798,33 @@ const App = (() => {
       traits: _pigeon.traits,
       stats:  _pigeon.stats,
     });
+  }
+
+  async function _repairData() {
+    if (!confirm("Repair Account?\n\nThis will clean up your pigeon data, clear your local session, and reload the app. You won't lose your pigeons!")) return;
+
+    showToast("🛠️ Repairing data...");
+
+    try {
+      // 1. Database level cleanup
+      await DB.repairPigeonData(_user.uid);
+
+      // 2. Clear all pigeon-related local storage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith(`pigeons_${_user.uid}`)) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      showToast("✅ Repair complete! Reloading...");
+      setTimeout(() => {
+        window.location.reload(true); // true = force reload from server
+      }, 1500);
+
+    } catch (err) {
+      console.error("[App] Repair failed:", err);
+      showToast("Repair failed. Check connection.");
+    }
   }
 
   /* ──────────────────────────────────────────────────────────
