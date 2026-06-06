@@ -434,18 +434,8 @@ const App = (() => {
         }
       }
 
-      // We want the active pigeon to be a hatched one if possible for Home/Profile display
-      const hatched = all.filter(p => p.hatched);
       const activeId = _userData.activePigeonId || _user.uid;
-
-      let candidate = all.find(p => p.id === activeId);
-
-      // If active candidate is an egg but we have hatched pigeons, default to a hatched one
-      if (candidate && !candidate.hatched && hatched.length > 0) {
-        candidate = hatched.find(p => p.id === _user.uid) || hatched[0];
-      }
-
-      _pigeon = candidate || all[0] || null;
+      _pigeon = all.find(p => p.id === activeId) || all[0] || null;
 
       // Sync locks for all pigeons (especially eggs in the nest)
       all.forEach(p => _syncLocksFromDB(_user.uid, p));
@@ -837,89 +827,111 @@ const App = (() => {
     const streakEl = document.getElementById("home-streak");
     if (streakEl) streakEl.textContent = streak;
 
-    // Mood state
-    const missedDays = _calcMissedDays(_userData.loginDates ?? []);
-    const rehabDay   = _pigeon.rehabDay ?? 0;
-    const mood = getMood(_pigeon.bond ?? 50, missedDays, rehabDay);
+    const careSection = document.getElementById("home-care-section");
+    const eggSection = document.getElementById("home-egg-section");
+    const moodBadge = document.getElementById("mood-badge");
+    const bondBar = document.querySelector(".mood-section");
 
-    // Build pigeon rig with correct animation state
-    const rig = document.getElementById("home-rig");
-    if (rig) {
-      if (_pigeon.hatched) {
+    if (_pigeon.hatched) {
+      careSection.classList.remove("hidden");
+      eggSection.classList.add("hidden");
+      moodBadge.classList.remove("hidden");
+      bondBar.classList.remove("hidden");
+
+      // Mood state
+      const missedDays = _calcMissedDays(_userData.loginDates ?? []);
+      const rehabDay   = _pigeon.rehabDay ?? 0;
+      const mood = getMood(_pigeon.bond ?? 50, missedDays, rehabDay);
+
+      // Build pigeon rig with correct animation state
+      const rig = document.getElementById("home-rig");
+      if (rig) {
         buildPigeonRig(rig, traits, { idle: mood === "happy" || mood === "neutral" });
         // Apply mood-specific animation class
         rig.classList.remove("feral","rehab","low-hp");
         if (mood === "feral") rig.classList.add("feral");
         if (mood === "rehab") rig.classList.add("rehab");
-      } else {
-        // Fallback for unhatched egg (though _loadPigeons tries to avoid this being active)
-        const daysDone = (_pigeon.incubationLog ?? []).length;
+      }
+
+      // Mood badge
+      const MOOD_LABELS = {
+        happy:   "😄 Happy",
+        neutral: "😐 Neutral",
+        upset:   "😤 Upset",
+        feral:   "💀 FERAL",
+        rehab:   "🩹 Recovering",
+      };
+      if (moodBadge) {
+        moodBadge.className = `mood-badge show ${mood}`;
+        moodBadge.textContent = MOOD_LABELS[mood] ?? mood;
+      }
+
+      updateBondUI(_pigeon.bond ?? 50);
+      renderStatChips("quick-stats", stats);
+
+      // Mark care cards as done and show countdowns
+      const CARE_FIELDS  = { food: "lastFed", play: "lastPlayed", train: "lastTrained" };
+      ["food","play","train"].forEach((care) => {
+        const btn   = document.getElementById(`care-${care}`);
+        const field = CARE_FIELDS[care];
+        const done  = _pigeon[field] === today || (_user && _isActionLocked(_user.uid, care));
+        if (btn) btn.classList.toggle("done", done);
+      });
+
+      let cdWrap = document.getElementById("care-countdown");
+      const anyDone = ["food","play","train"].some((c) => _pigeon[CARE_FIELDS[c]] === today);
+      if (anyDone) {
+        if (!cdWrap) {
+          cdWrap = document.createElement("div");
+          cdWrap.id = "care-countdown";
+          cdWrap.className = "countdown-wrap";
+          cdWrap.innerHTML = `
+            <span class="countdown-label">Next Peck available in</span>
+            <span class="countdown-timer js-countdown">—</span>
+            <span class="countdown-sub">Actions reset at midnight</span>
+          `;
+          careSection.appendChild(cdWrap);
+        }
+      } else if (cdWrap) cdWrap.remove();
+
+    } else {
+      // It's an egg!
+      careSection.classList.add("hidden");
+      eggSection.classList.remove("hidden");
+      moodBadge.classList.add("hidden");
+      bondBar.classList.add("hidden");
+
+      const daysDone = (_pigeon.incubationLog ?? []).length;
+      const rig = document.getElementById("home-rig");
+      if (rig) {
         let eggState = "egg_whole";
         if (daysDone === 1) eggState = "egg_crack1";
         if (daysDone >= 2) eggState = "egg_crack2";
         rig.innerHTML = `<img src="${PIGEON_CONFIG.eggPath(eggState)}" class="egg-img" style="max-width:200px">`;
       }
-    }
 
-    // Mood badge
-    const MOOD_LABELS = {
-      happy:   "😄 Happy",
-      neutral: "😐 Neutral",
-      upset:   "😤 Upset",
-      feral:   "💀 FERAL",
-      rehab:   "🩹 Recovering",
-    };
-    const badge = document.getElementById("mood-badge");
-    if (badge) {
-      badge.className = `mood-badge show ${mood}`;
-      badge.textContent = MOOD_LABELS[mood] ?? mood;
-    }
+      const label = document.getElementById("home-egg-label");
+      if (label) label.textContent = `Incubation: ${daysDone}/3 Days`;
 
-    updateBondUI(_pigeon.bond ?? 50);
-    renderStatChips("quick-stats", stats);
+      const usedToday = _pigeon.lastActionDate === today || (_user && _isActionLocked(_user.uid, `egg_${_pigeon.id}`));
+      document.getElementById("home-egg-grid").style.display = usedToday ? "none" : "grid";
+      document.getElementById("home-egg-used").classList.toggle("hidden", !usedToday);
 
-    // Mark care cards as done and show countdowns
-    const CARE_FIELDS  = { food: "lastFed", play: "lastPlayed", train: "lastTrained" };
-    const CARE_LABELS  = { food: "Next Feed", play: "Next Play", train: "Next Training" };
-    const CARE_SUBS    = { food: "Your bird is full", play: "Pigeon is tired", train: "Muscles need rest" };
-
-    ["food","play","train"].forEach((care) => {
-      const btn   = document.getElementById(`care-${care}`);
-      const field = CARE_FIELDS[care];
-      // Check database data OR localStorage — both count as done
-      const done  = _pigeon[field] === today
-        || (_user && _isActionLocked(_user.uid, care));
-      if (btn) btn.classList.toggle("done", done);
-    });
-
-    // Single countdown below care grid — shows time until midnight reset
-    let cdWrap = document.getElementById("care-countdown");
-    const anyDone = ["food","play","train"].some(
-      (c) => _pigeon[CARE_FIELDS[c]] === today
-    );
-    if (anyDone) {
-      if (!cdWrap) {
-        cdWrap = document.createElement("div");
-        cdWrap.id = "care-countdown";
-        cdWrap.className = "countdown-wrap";
-        cdWrap.innerHTML = `
-          <span class="countdown-label">Next Peck available in</span>
-          <span class="countdown-timer js-countdown">—</span>
-          <span class="countdown-sub">Actions reset at midnight</span>
-        `;
-        const careSection = document.querySelector(".care-section");
-        if (careSection) careSection.appendChild(cdWrap);
-      }
-    } else {
-      if (cdWrap) cdWrap.remove();
+      document.getElementById("quick-stats").innerHTML = "";
     }
   }
 
   function _initCareActions() {
-    document.querySelector(".care-grid")?.addEventListener("click", async (e) => {
+    document.getElementById("home-care-section")?.addEventListener("click", async (e) => {
       const card = e.target.closest(".care-card");
       if (!card || card.classList.contains("done")) return;
-      await _doCareAction(card.dataset.care);
+      if (card.dataset.care) await _doCareAction(card.dataset.care);
+    });
+
+    document.getElementById("home-egg-section")?.addEventListener("click", async (e) => {
+      const card = e.target.closest(".care-card");
+      if (!card) return;
+      if (card.dataset.egg) await _doEggAction(card.dataset.egg);
     });
   }
 
@@ -1070,9 +1082,15 @@ const App = (() => {
         } else {
           statusText = `EGG • ${daysDone}/3 DAYS`;
           if (daysDone >= 3) {
-            actionsHtml = `<button class="btn-primary btn-sm btn-hatch" data-id="${p.id}">HATCH!</button>`;
+            actionsHtml = `
+              ${!isActive ? `<button class="btn-ghost btn-sm btn-switch" style="margin-bottom:4px" data-id="${p.id}">Make Active</button>` : ''}
+              <button class="btn-primary btn-sm btn-hatch" data-id="${p.id}">HATCH!</button>
+            `;
           } else if (usedToday) {
-            actionsHtml = `<span class="nest-egg-done">Done for today</span>`;
+            actionsHtml = `
+              <span class="nest-egg-done">Done for today</span>
+              ${!isActive ? `<button class="btn-ghost btn-sm btn-switch" data-id="${p.id}">Make Active</button>` : ''}
+            `;
           } else {
             actionsHtml = `
               <div class="nest-egg-actions">
@@ -1080,6 +1098,7 @@ const App = (() => {
                 <button class="btn-nest-action" data-id="${p.id}" data-action="heat" title="Heat">🔥</button>
                 <button class="btn-nest-action" data-id="${p.id}" data-action="lick" title="Lick">👅</button>
               </div>
+              ${!isActive ? `<button class="btn-ghost btn-sm btn-switch" style="margin-top:4px" data-id="${p.id}">Make Active</button>` : ''}
             `;
           }
         }
@@ -1889,8 +1908,22 @@ const App = (() => {
     return streak;
   }
 
-  return { boot, saveNewPigeon, recordBattleResult };
+  return {
+    boot,
+    saveNewPigeon,
+    recordBattleResult,
+    // Expose for verification
+    _renderNestScreen,
+    _renderHomeScreen,
+    setDebugData: (data) => {
+      if (data.userData) _userData = data.userData;
+      if (data.pigeon) _pigeon = data.pigeon;
+      if (data.user) _user = data.user;
+    }
+  };
 })();
+
+window.App = App;
 
 /* ── Start the app ── */
 document.addEventListener("DOMContentLoaded", App.boot);
