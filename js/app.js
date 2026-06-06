@@ -421,6 +421,9 @@ const App = (() => {
   ────────────────────────────────────────────────────────────── */
   async function _loadPigeons() {
     try {
+      // Automatic migration of legacy data
+      await DB.migrateLegacyPigeon(_user.uid);
+
       const all = await DB.getPigeons(_user.uid);
 
       // Cleanup: remove extra eggs created on the same day (bug fix)
@@ -1218,12 +1221,17 @@ const App = (() => {
       const inheritedKey = traitKeys[Math.floor(Math.random() * traitKeys.length)];
 
       // New traits: generate random, then override EXACTLY one from parent
-      // Seed with UID + timestamp + random for maximum uniqueness
-      const newTraits = generatePigeonTraits(_user.uid + Date.now() + Math.random());
+      // Seed with UID + timestamp + random + a unique UUID-like string for maximum uniqueness
+      const entropy = _user.uid + Date.now() + Math.random().toString(36).substring(2);
+      const newTraits = generatePigeonTraits(entropy);
 
       // Ensure the other traits are actually different (or as different as the pool allows)
       // but strictly set the inherited one.
       newTraits[inheritedKey] = parentTraits[inheritedKey];
+
+      // CRITICAL: If we inherit a leg, we must match both leg_far and leg_near
+      if (inheritedKey === 'leg_far') newTraits.leg_near = parentTraits.leg_far;
+      if (inheritedKey === 'leg_near') newTraits.leg_far = parentTraits.leg_near;
 
       const pigeonId = "pigeon_" + Date.now();
       const eggData = {

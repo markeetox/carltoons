@@ -48,13 +48,18 @@ const DB = {
           const val = rootSnap.val();
           // Clean legacy data: remove any sub-nodes that are actually other pigeons
           const cleaned = {};
+          let hasLegacyData = false;
           Object.keys(val).forEach(k => {
-            if (typeof val[k] !== 'object' || k === 'stats' || k === 'traits' || k === 'incubationLog') {
+            // Legacy properties are root level keys that aren't pigeon IDs
+            if (k === 'stats' || k === 'traits' || k === 'incubationLog' || k === 'name' || k === 'hatched') {
+              cleaned[k] = val[k];
+              hasLegacyData = true;
+            } else if (typeof val[k] !== 'object') {
               cleaned[k] = val[k];
             }
           });
 
-          if (cleaned.stats || cleaned.incubationLog) {
+          if (hasLegacyData) {
             if (pigeon) {
               return { ...cleaned, ...pigeon, id: uid }; // pigeon sub-node wins on conflicts
             } else {
@@ -130,6 +135,37 @@ const DB = {
       await db.ref(`pigeons/${uid}/${id}`).update(data);
     } catch (err) {
       console.error("[DB] updatePigeon failed:", err);
+    }
+  },
+  async migrateLegacyPigeon(uid) {
+    if (!uid || !auth.currentUser) return;
+    try {
+      const rootSnap = await db.ref(`pigeons/${uid}`).once('value');
+      if (!rootSnap.exists()) return;
+      const val = rootSnap.val();
+
+      const legacyKeys = ['stats', 'traits', 'incubationLog', 'name', 'hatched', 'bond', 'level', 'xp', 'hatchDate', 'lastFed', 'lastPlayed', 'lastTrained', 'lastActionDate', 'feralSince', 'rehabDay'];
+      const updates = {};
+      let hasLegacy = false;
+
+      legacyKeys.forEach(k => {
+        if (val[k] !== undefined) {
+          updates[k] = val[k];
+          hasLegacy = true;
+        }
+      });
+
+      if (hasLegacy) {
+        console.log(`[DB] Migrating legacy pigeon for ${uid}`);
+        // Move to sub-node
+        await db.ref(`pigeons/${uid}/${uid}`).update(updates);
+        // Remove from root
+        const removals = {};
+        legacyKeys.forEach(k => removals[k] = null);
+        await db.ref(`pigeons/${uid}`).update(removals);
+      }
+    } catch (err) {
+      console.error("[DB] Migration failed:", err);
     }
   },
   async deletePigeon(uid, pigeonId) {
