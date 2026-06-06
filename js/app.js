@@ -724,7 +724,8 @@ const App = (() => {
   ────────────────────────────────────────────────────────────── */
   function _triggerHatch() {
     const log    = _pigeon?.incubationLog ?? [];
-    const traits = generatePigeonTraits(_user.uid);
+    // Ensure every egg has unique traits and stats based on its own ID/seed
+    const traits = _pigeon?.traits || generatePigeonTraits((_pigeon?.id || _user.uid) + Date.now());
     const stats  = computeStats(log);
     Hatch.start(traits, stats);
   }
@@ -1507,7 +1508,7 @@ const App = (() => {
         list = await DB.searchPlayers(query);
       } else {
         list = await DB.getLeaderboard();
-        list = list.slice(0, 5);
+        list = list.slice(0, 15);
       }
 
       el.innerHTML = "";
@@ -1517,22 +1518,49 @@ const App = (() => {
         return;
       }
 
-      list.forEach((d, i) => {
+      for (let i = 0; i < list.length; i++) {
+        const d = list[i];
         const row = document.createElement("div");
-        row.className = "lb-row";
+        const rank = i + 1;
+        row.className = `lb-row ${rank <= 5 ? 'top-' + rank : ''}`;
+
         const formattedElo = _formatNumber(d.elo ?? 1000);
         const isMe = d.uid === _user.uid;
 
+        let pigeonHtml = "";
+        if (rank === 1 && !query) {
+          pigeonHtml = `<div class="lb-pigeon-slot" id="lb-top-pigeon"></div>`;
+        }
+
         row.innerHTML = `
-          <span class="lb-rank">${query ? "" : "#" + (i + 1)}</span>
-          <span class="lb-name">${d.username ?? "Pigeon owner"}</span>
+          ${pigeonHtml}
+          <span class="lb-rank">${query ? "" : "#" + rank}</span>
+          <div class="lb-info">
+            <span class="lb-name">${d.username ?? "Pigeon owner"}</span>
+            <span class="lb-elo">${formattedElo} points</span>
+          </div>
           <div class="lb-right">
-            <span class="lb-elo">${formattedElo}</span>
-            ${!isMe ? `<button class="btn-challenge" data-uid="${d.uid}" data-username="${d.username}">Challenge</button>` : ""}
+            ${!isMe ? `<button class="btn-challenge" data-uid="${d.uid}" data-username="${d.username}" title="Challenge"><i class="fa-solid fa-hand-fist"></i></button>` : ""}
           </div>
         `;
         el.appendChild(row);
-      });
+
+        // Render #1 rank pigeon
+        if (rank === 1 && !query) {
+          try {
+            const pigeons = await DB.getPigeons(d.uid);
+            const activeId = d.activePigeonId || d.uid;
+            const active = pigeons.find(p => p.id === activeId) || pigeons[0];
+            const slot = row.querySelector("#lb-top-pigeon");
+            if (active && slot) {
+              const rig = document.createElement("div");
+              rig.className = "pigeon-rig idle";
+              buildPigeonRig(rig, active.traits);
+              slot.appendChild(rig);
+            }
+          } catch (err) {}
+        }
+      }
 
       // Wire up challenge buttons
       el.querySelectorAll(".btn-challenge").forEach(btn => {
