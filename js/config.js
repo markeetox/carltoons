@@ -53,7 +53,7 @@ const PIGEON_CONFIG = {
     tail:     7,   // tail_1.png     … tail_7.png
     torso:    8,   // torso_1.png    … torso_8.png
     leg_near: 6,   // leg_near_1.png … leg_near_6.png
-    head:     16,  // head_1.png     … head_16.png
+    head:     24,  // head_1.png     … head_24.png
     wings:    8,   // wings_1.png    … wings_8.png
   },
 

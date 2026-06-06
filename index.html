@@ -246,7 +246,7 @@
     </div>
 
     <!-- Daily care actions -->
-    <div class="care-section">
+    <div class="care-section" id="home-care-section">
       <p class="section-label">Daily Care</p>
       <div class="care-grid">
         <button class="care-card" data-care="food" id="care-food">
@@ -261,6 +261,29 @@
           <i class="fa-solid fa-dumbbell"></i>
           <span>Train</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Egg incubation section (hidden by default) -->
+    <div class="care-section hidden" id="home-egg-section">
+      <p class="section-label" id="home-egg-label">Incubation</p>
+      <div class="care-grid" id="home-egg-grid">
+        <button class="care-card" data-egg="shake">
+          <span style="font-size:24px">🫳</span>
+          <span>Shake</span>
+        </button>
+        <button class="care-card" data-egg="heat">
+          <span style="font-size:24px">🔥</span>
+          <span>Heat</span>
+        </button>
+        <button class="care-card" data-egg="lick">
+          <span style="font-size:24px">👅</span>
+          <span>Lick</span>
+        </button>
+      </div>
+      <div id="home-egg-used" class="countdown-wrap hidden">
+         <span class="countdown-label">Next Nudge in</span>
+         <span class="countdown-timer js-countdown">—</span>
       </div>
     </div>
 

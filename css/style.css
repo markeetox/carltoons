@@ -462,10 +462,6 @@ input { font-family: var(--font-body); }
 #screen-login {
   padding-bottom: 0;
   background: #000;
-  max-width: none;
-  left: 0;
-  transform: none;
-  width: 100vw;
 }
 .login-bg {
   position: absolute; inset: 0; overflow: hidden;
