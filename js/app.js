@@ -423,6 +423,17 @@ const App = (() => {
     try {
       const all = await DB.getPigeons(_user.uid);
 
+      // Cleanup: remove extra eggs created on the same day (bug fix)
+      if (all.length > 3) {
+        const eggs = all.filter(p => !p.hatched).sort((a, b) => (b.id.split('_')[1] || 0) - (a.id.split('_')[1] || 0));
+        while (all.length > 3 && eggs.length > 0) {
+          const extra = eggs.pop();
+          await DB.deletePigeon(_user.uid, extra.id);
+          const idx = all.findIndex(p => p.id === extra.id);
+          if (idx !== -1) all.splice(idx, 1);
+        }
+      }
+
       // We want the active pigeon to be a hatched one if possible for Home/Profile display
       const hatched = all.filter(p => p.hatched);
       const activeId = _userData.activePigeonId || _user.uid;
@@ -722,6 +733,7 @@ const App = (() => {
      SAVE NEW PIGEON (called by Hatch.js after naming)
   ────────────────────────────────────────────────────────────── */
   async function saveNewPigeon(name, traits, stats) {
+    // If the active pigeon was an egg, its ID is what we want to keep/replace
     const pid = _pigeon?.id || (_userData.activePigeonId || _user.uid);
     const pigeonData = {
       id:            pid,
