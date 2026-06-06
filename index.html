@@ -300,6 +300,7 @@
     <div class="top-bar">
       <span class="top-bar-title">The Nest</span>
       <div class="top-bar-right">
+        <button class="btn-icon" id="btn-nest-refresh" title="Refresh Nest"><i class="fa-solid fa-rotate"></i></button>
         <span class="streak-badge"><i class="fa-solid fa-fire"></i> <span id="nest-streak">0</span></span>
       </div>
     </div>
@@ -374,6 +375,16 @@
         <!-- 7 dots, filled = logged in that day -->
       </div>
       <p class="streak-total">Total logins: <strong id="total-logins">0</strong></p>
+    </div>
+
+    <!-- Data Repair (Automated Cleanup) -->
+    <div class="repair-section" style="margin-top:24px; padding:16px; background:rgba(255,255,255,0.05); border-radius:12px; text-align:center">
+      <p style="font-size:12px; color:var(--clr-text-muted); margin-bottom:12px">
+        Stuck with duplicate eggs or missing pigeons? This will clean up your account data and refresh the app.
+      </p>
+      <button class="btn-ghost btn-sm" id="btn-repair-account">
+        <i class="fa-solid fa-screwdriver-wrench"></i> Repair Account
+      </button>
     </div>
   </div>
 

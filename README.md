@@ -67,6 +67,23 @@ The game uses a nested structure to support multiple pigeons per user. This is h
 - **Real-time Battles:** Multiplayer using Firebase Realtime Database for instant state synchronization.
 - **Incubation System:** 3-day egg hatching cycle with stat-influencing actions.
 
+### Troubleshooting Multi-Pigeon Issues
+
+If you find that your eggs are hatching with the same traits or that your daily interactions are desynced (e.g., seeing egg actions for a hatched pigeon), follow these steps:
+
+1. **Update Firebase Rules:** Ensure your security rules include the `$pigeonId` sub-node write permission as shown above.
+2. **Hard Refresh:** Because this is a PWA, the Service Worker might be serving an old version of the JavaScript files. Perform a **Hard Refresh** (Cmd/Ctrl + Shift + R) or clear your browser site data to force the latest code.
+3. **Legacy Migration:** The game automatically attempts to migrate old data structures. If your "Active" pigeon is stuck as an egg, try switching to another pigeon in the Nest and then back again to refresh the state.
+4. **Matched Legs:** The breeding system matches `leg_far` and `leg_near`. If you are manually editing traits in the Firebase console, ensure these two variants match to avoid visual glitches.
+
+### Manual Data Cleanup (Advanced)
+
+If migration fails or your data is in a broken state, you can manually fix it in the Firebase Realtime Database Console:
+
+1. **Migrate Root Data:** Copy any pigeon properties (traits, stats, incubationLog) from `pigeons/{uid}` into `pigeons/{uid}/{uid}`.
+2. **Clear Root Keys:** Delete the `traits`, `stats`, and `incubationLog` keys from the root of `pigeons/{uid}`. Leave only the sub-nodes (e.g., `pigeon_1736...`).
+3. **Set Active Pigeon:** Ensure `players/{uid}/activePigeonId` matches the ID of the pigeon you want to see on your home screen.
+
 ## Development
 To run locally:
 ```bash

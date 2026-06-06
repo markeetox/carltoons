@@ -2,7 +2,7 @@
    sw.js  —  Service Worker (PWA)
    ════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = "pigeons-v2";
+const CACHE_NAME = "pigeons-v6";
 
 const SHELL = [
   "/",
