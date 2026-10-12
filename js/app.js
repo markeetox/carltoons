@@ -701,10 +701,17 @@ const App = (() => {
       _renderNestScreen();
       _renderEggScreen();
 
-      const daysDone = incubationLog.filter(Boolean).length;
-      if (daysDone >= GAME_CONFIG.eggDays && pid === _pigeon?.id) {
-        setTimeout(_triggerHatch, 1000);
-      }
+async function _hatchFromNest(id) {
+  const pigeons = await DB.getPigeons(_user.uid);
+  const target = pigeons.find(p => p.id === id);
+  if (!target) return;
+
+  _pigeon = target;
+  await DB.updatePlayer(_user.uid, { activePigeonId: id });
+  _userData.activePigeonId = id;
+  _triggerHatch();
+}
+
     } catch (err) {
       console.error("[App] Egg action failed:", err);
       showToast("Action failed. Check database permissions.");
